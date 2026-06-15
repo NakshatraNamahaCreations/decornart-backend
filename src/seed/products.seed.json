@@ -1,0 +1,205 @@
+[
+  {
+    "slug": "rosewood-hand-tie",
+    "name": "Rosewood Hand-Tie",
+    "price": 2499,
+    "occasion": "Anniversary",
+    "occasions": [
+      "anniversary",
+      "just-because"
+    ],
+    "category": "signature",
+    "isNew": false,
+    "isBestseller": true
+  },
+  {
+    "slug": "sunlit-meadow",
+    "name": "Sunlit Meadow",
+    "price": 1899,
+    "occasion": "Birthday",
+    "occasions": [
+      "birthday",
+      "just-because"
+    ],
+    "category": "classic",
+    "isNew": false,
+    "isBestseller": true
+  },
+  {
+    "slug": "ivory-whisper",
+    "name": "Ivory Whisper",
+    "price": 2199,
+    "occasion": "Sympathy",
+    "occasions": [
+      "sympathy"
+    ],
+    "category": "signature",
+    "isNew": false,
+    "isBestseller": true
+  },
+  {
+    "slug": "blush-editorial",
+    "name": "Blush Editorial",
+    "price": 2799,
+    "occasion": "Wedding",
+    "occasions": [
+      "wedding",
+      "anniversary"
+    ],
+    "category": "handmade",
+    "isNew": true,
+    "isBestseller": false
+  },
+  {
+    "slug": "garden-romance",
+    "name": "Garden Romance",
+    "price": 3299,
+    "occasion": "Anniversary",
+    "occasions": [
+      "anniversary",
+      "wedding"
+    ],
+    "category": "signature",
+    "isNew": false,
+    "isBestseller": true
+  },
+  {
+    "slug": "wild-meadow",
+    "name": "Wild Meadow",
+    "price": 1599,
+    "occasion": "Birthday",
+    "occasions": [
+      "birthday",
+      "just-because"
+    ],
+    "category": "classic",
+    "isNew": false,
+    "isBestseller": false
+  },
+  {
+    "slug": "blush-minimal",
+    "name": "Blush Minimal",
+    "price": 2899,
+    "occasion": "Wedding",
+    "occasions": [
+      "wedding",
+      "anniversary"
+    ],
+    "category": "handmade",
+    "isNew": true,
+    "isBestseller": false
+  },
+  {
+    "slug": "deep-jewel",
+    "name": "Deep Jewel",
+    "price": 3899,
+    "occasion": "Anniversary",
+    "occasions": [
+      "anniversary"
+    ],
+    "category": "handmade",
+    "isNew": false,
+    "isBestseller": false
+  },
+  {
+    "slug": "white-ceremony",
+    "name": "White Ceremony",
+    "price": 4599,
+    "occasion": "Wedding",
+    "occasions": [
+      "wedding",
+      "sympathy"
+    ],
+    "category": "signature",
+    "isNew": false,
+    "isBestseller": false
+  },
+  {
+    "slug": "morning-marigold",
+    "name": "Morning Marigold",
+    "price": 1399,
+    "occasion": "Congratulations",
+    "occasions": [
+      "congratulations",
+      "birthday"
+    ],
+    "category": "seasonal",
+    "isNew": true,
+    "isBestseller": true
+  },
+  {
+    "slug": "birthday-bloom",
+    "name": "Birthday Bloom",
+    "price": 1799,
+    "occasion": "Birthday",
+    "occasions": [
+      "birthday"
+    ],
+    "category": "classic",
+    "isNew": false,
+    "isBestseller": false
+  },
+  {
+    "slug": "velvet-crimson",
+    "name": "Velvet Crimson",
+    "price": 3299,
+    "occasion": "Anniversary",
+    "occasions": [
+      "anniversary"
+    ],
+    "category": "signature",
+    "isNew": false,
+    "isBestseller": false
+  },
+  {
+    "slug": "pale-sympathy",
+    "name": "Pale Sympathy",
+    "price": 2099,
+    "occasion": "Sympathy",
+    "occasions": [
+      "sympathy"
+    ],
+    "category": "classic",
+    "isNew": false,
+    "isBestseller": false
+  },
+  {
+    "slug": "saffron-and-sage",
+    "name": "Saffron & Sage",
+    "price": 5499,
+    "occasion": "Wedding",
+    "occasions": [
+      "wedding",
+      "congratulations"
+    ],
+    "category": "handmade",
+    "isNew": true,
+    "isBestseller": false
+  },
+  {
+    "slug": "citrus-garland",
+    "name": "Citrus Garland",
+    "price": 1299,
+    "occasion": "Birthday",
+    "occasions": [
+      "birthday",
+      "congratulations"
+    ],
+    "category": "seasonal",
+    "isNew": true,
+    "isBestseller": false
+  },
+  {
+    "slug": "snow-lily",
+    "name": "Snow Lily",
+    "price": 4299,
+    "occasion": "Wedding",
+    "occasions": [
+      "wedding",
+      "sympathy"
+    ],
+    "category": "signature",
+    "isNew": false,
+    "isBestseller": false
+  }
+]

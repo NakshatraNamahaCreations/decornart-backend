@@ -1,0 +1,32 @@
+"use strict";
+
+const { z } = require("zod");
+
+const register = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().email().toLowerCase(),
+  password: z.string().min(8).max(128),
+  phone: z.string().trim().min(7).max(20).optional(),
+});
+
+const login = z.object({
+  email: z.string().trim().email().toLowerCase(),
+  password: z.string().min(1).max(128),
+});
+
+const refresh = z.object({
+  refreshToken: z.string().min(10).optional(),
+});
+
+const address = z.object({
+  label: z.string().trim().max(40).optional(),
+  line1: z.string().trim().min(3).max(160),
+  line2: z.string().trim().max(160).optional(),
+  city: z.string().trim().min(2).max(80),
+  state: z.string().trim().min(2).max(80),
+  pincode: z.string().trim().regex(/^\d{6}$/, "Pincode must be 6 digits"),
+  phone: z.string().trim().min(7).max(20),
+  isDefault: z.boolean().optional(),
+});
+
+module.exports = { register, login, refresh, address };
