@@ -65,6 +65,7 @@ api.use(apiLimiter);
 const modules = [
   ["/auth", "./modules/auth/auth.routes"],
   ["/products", "./modules/product/product.routes"],
+  ["/categories", "./modules/category/category.routes"],
   ["/cart", "./modules/cart/cart.routes"],
   ["/orders", "./modules/order/order.routes"],
   ["/wishlist", "./modules/wishlist/wishlist.routes"],
