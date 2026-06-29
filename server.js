@@ -21,7 +21,7 @@ async function start() {
   adminBootstrap.wire();
 
   server.listen(config.port, () => {
-    logger.info(`decornart-backend listening`, { port: config.port, env: config.env });
+    logger.info(`Decor N Art-backend listening`, { port: config.port, env: config.env });
   });
 }
 

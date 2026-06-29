@@ -16,7 +16,7 @@ async function subscribe({ email: addr, source }) {
 
   email.send({
     to: addr,
-    subject: "Welcome to the Decornart atelier",
+    subject: "Welcome to the Decor N Art atelier",
     html: "<p>Thank you for subscribing. Expect quiet, considered florals.</p>",
   });
 

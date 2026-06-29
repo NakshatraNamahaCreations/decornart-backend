@@ -1,7 +1,7 @@
 {
-  "name": "decornart-backend",
+  "name": "Decor N Art-backend",
   "version": "1.0.0",
-  "description": "Decornart bouquet e-commerce backend — modular monolith, fault-isolated.",
+  "description": "Decor N Art bouquet e-commerce backend — modular monolith, fault-isolated.",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

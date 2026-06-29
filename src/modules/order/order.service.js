@@ -114,7 +114,7 @@ async function verifyPayment(user, { razorpayOrderId, razorpayPaymentId, razorpa
   cartService.clear(user.id).catch(() => {});
   email.send({
     to: user.email,
-    subject: `Decornart order ${order.orderNumber} confirmed`,
+    subject: `Decor N Art order ${order.orderNumber} confirmed`,
     html: `<p>Thank you, ${user.name}. Your order <b>${order.orderNumber}</b> is confirmed.</p>`,
   });
 

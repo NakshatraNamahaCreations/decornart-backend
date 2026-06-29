@@ -1,6 +1,6 @@
-# Decornart — Backend
+# Decor N Art — Backend
 
-Node.js + Express + MongoDB backend for the Decornart bouquet e-commerce site.
+Node.js + Express + MongoDB backend for the Decor N Art bouquet e-commerce site.
 Built as a **fault-isolated modular monolith**: one runnable service, but every
 domain is a self-contained module (`model` + `validation` + `service` +
 `controller` + `routes`) that can be lifted into its own microservice later
@@ -71,7 +71,7 @@ npm run seed                # load the 16-product catalog (needs Mongo up)
 npm run dev                 # or: npm start
 ```
 
-Mongo is expected at `mongodb://127.0.0.1:27017/decornart` by default. Redis,
+Mongo is expected at `mongodb://127.0.0.1:27017/Decor N Art` by default. Redis,
 Razorpay and email are **optional** — disabled in `.env.example`, the app
 degrades gracefully without them (mock payment, in-memory cache, no-op email).
 

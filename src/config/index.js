@@ -34,7 +34,7 @@ const config = {
   },
 
   mongo: {
-    uri: process.env.MONGO_URI || "mongodb://127.0.0.1:27017/decornart",
+    uri: process.env.MONGO_URI || "mongodb://127.0.0.1:27017/Decor N Art",
     // Connection pooling — reused sockets, no per-request handshake cost.
     maxPoolSize: int(process.env.MONGO_MAX_POOL, 20),
     minPoolSize: int(process.env.MONGO_MIN_POOL, 2),
@@ -59,7 +59,7 @@ const config = {
   admin: {
     email: process.env.ADMIN_EMAIL || "",
     password: process.env.ADMIN_PASSWORD || "",
-    name: process.env.ADMIN_NAME || "Decornart Admin",
+    name: process.env.ADMIN_NAME || "Decor N Art Admin",
   },
 
   request: {
@@ -85,7 +85,7 @@ const config = {
     port: int(process.env.SMTP_PORT, 587),
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
-    from: process.env.EMAIL_FROM || "Decornart <no-reply@decornart.in>",
+    from: process.env.EMAIL_FROM || "Decor N Art <no-reply@Decor N Art.in>",
   },
 
   // Commerce rules — kept server-side so the client can't tamper with totals.
