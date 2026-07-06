@@ -13,7 +13,6 @@ const CATEGORIES = [
   "crochet-materials",
   "ribbons",
   "wrapping-papers",
-  "artificial-plants",
 ];
 
 const productSchema = new mongoose.Schema(
@@ -37,7 +36,26 @@ const productSchema = new mongoose.Schema(
       pack: { type: String, trim: true },
       origin: { type: String, trim: true },
       finish: { type: String, trim: true },
+      thickness: { type: String, trim: true },
+      length: { type: String, trim: true },
     },
+
+    // ── FAQs shown on the product page's FAQ tab. Optional; empty array
+    // means the tab renders the "no questions yet" state on the storefront.
+    faqs: {
+      type: [
+        {
+          _id: false,
+          q: { type: String, required: true, trim: true },
+          a: { type: String, required: true, trim: true },
+        },
+      ],
+      default: [],
+    },
+
+    // ── Optional color variants a shopper can pick from on the product
+    // page. Empty array means the product has no color selector.
+    colors: { type: [String], default: [] },
 
     // ── Legacy use-case tags (storefront filter still reads these;
     // admin no longer writes them but old docs may still have them).

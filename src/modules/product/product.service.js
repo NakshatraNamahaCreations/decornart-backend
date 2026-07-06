@@ -48,7 +48,7 @@ async function list(query) {
         .sort(sort)
         .skip(skip)
         .limit(limit)
-        .select("slug name price occasion occasions category images isNew isBestseller rating")
+        .select("slug name price occasion occasions category images isNew isBestseller rating colors")
         .lean(),
       Product.countDocuments(filter),
     ]);
@@ -64,6 +64,7 @@ async function list(query) {
       isNew: p.isNew,
       isBestseller: p.isBestseller,
       rating: p.rating,
+      colors: p.colors || [],
     }));
     return { items: cards, meta: buildMeta({ page, limit, total }) };
   });

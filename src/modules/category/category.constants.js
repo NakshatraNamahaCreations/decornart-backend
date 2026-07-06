@@ -44,11 +44,6 @@ const CATEGORIES = [
     name: "Wrapping Sheets & Papers",
     description: "Kraft, tissue and printed sheets for premium wrap.",
   },
-  {
-    slug: "artificial-plants",
-    name: "Artificial Plants & Planters",
-    description: "Lifelike foliage and planters for home and office decor.",
-  },
 ];
 
 module.exports = { CATEGORIES };

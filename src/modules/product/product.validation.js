@@ -13,7 +13,6 @@ const CATEGORIES = [
   "crochet-materials",
   "ribbons",
   "wrapping-papers",
-  "artificial-plants",
 ];
 
 const listQuery = z.object({

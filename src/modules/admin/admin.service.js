@@ -141,6 +141,13 @@ function serialize(doc) {
     occasion: doc.occasion || "",
     occasions: doc.occasions || [],
     category: doc.category,
+    // Craft-supply detail fields — required for the admin edit form to
+    // round-trip existing values instead of showing empty inputs.
+    packContents: doc.packContents || [],
+    usage: doc.usage || [],
+    specs: doc.specs || {},
+    faqs: doc.faqs || [],
+    colors: doc.colors || [],
     stems: doc.stems || "",
     images: doc.images || [],
     stock: doc.stock ?? 0,

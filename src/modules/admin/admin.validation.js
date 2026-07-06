@@ -16,7 +16,6 @@ const CATEGORIES = [
   "crochet-materials",
   "ribbons",
   "wrapping-papers",
-  "artificial-plants",
 ];
 
 const categoryEnum = z.enum(CATEGORIES);
@@ -28,9 +27,16 @@ const specsSchema = z
     pack: z.string().trim().max(120).optional(),
     origin: z.string().trim().max(120).optional(),
     finish: z.string().trim().max(120).optional(),
+    thickness: z.string().trim().max(120).optional(),
+    length: z.string().trim().max(120).optional(),
   })
   .partial()
   .optional();
+
+const faqSchema = z.object({
+  q: z.string().trim().min(1).max(300),
+  a: z.string().trim().min(1).max(2000),
+});
 
 const productBody = z.object({
   slug: z
@@ -47,6 +53,10 @@ const productBody = z.object({
   packContents: z.array(z.string().trim().max(300)).optional(),
   usage: z.array(z.string().trim().max(300)).optional(),
   specs: specsSchema,
+  faqs: z.array(faqSchema).optional(),
+  // Optional color variants (e.g., ["Red", "Blue"]). Empty array means
+  // no color selector on the storefront.
+  colors: z.array(z.string().trim().min(1).max(40)).optional(),
   // Legacy use-case tags — admin no longer writes these but the
   // storefront filter still reads them, so keep them accepted on the
   // payload for backwards compat with older data flows.
