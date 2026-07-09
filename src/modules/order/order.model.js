@@ -14,6 +14,32 @@ const orderLineSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Admin-authored notes attached to an order (visible to admins only). Each
+// entry is append-only so we retain the operator audit trail.
+const adminNoteSchema = new mongoose.Schema(
+  {
+    note: { type: String, required: true, trim: true, maxlength: 2000 },
+    by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    byName: { type: String, trim: true },
+    at: { type: Date, default: Date.now },
+  },
+  { _id: true }
+);
+
+// Status transitions written whenever an admin updates order.status. Powers
+// the timeline on the admin order detail page.
+const statusEventSchema = new mongoose.Schema(
+  {
+    from: String,
+    to: String,
+    note: { type: String, trim: true, maxlength: 500 },
+    by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    byName: { type: String, trim: true },
+    at: { type: Date, default: Date.now },
+  },
+  { _id: true }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     orderNumber: { type: String, required: true, unique: true, index: true },
@@ -34,17 +60,25 @@ const orderSchema = new mongoose.Schema(
       razorpayPaymentId: String,
       status: {
         type: String,
-        enum: ["created", "paid", "failed"],
+        enum: ["created", "paid", "failed", "refunded"],
         default: "created",
         index: true,
       },
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+      enum: ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"],
       default: "pending",
       index: true,
     },
+    // AWB / courier tracking — populated by the admin when the order ships.
+    tracking: {
+      awb: { type: String, trim: true },
+      courier: { type: String, trim: true },
+      url: { type: String, trim: true },
+    },
+    adminNotes: { type: [adminNoteSchema], default: [] },
+    statusHistory: { type: [statusEventSchema], default: [] },
   },
   { timestamps: true }
 );

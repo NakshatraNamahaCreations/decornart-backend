@@ -31,6 +31,9 @@ const userSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true, select: false },
     phone: { type: String, trim: true },
     role: { type: String, enum: ["customer", "admin"], default: "customer", index: true },
+    // Admin-controlled soft-block. When true, /auth/login rejects the user
+    // and protected routes 403 mid-session (the auth middleware checks).
+    blocked: { type: Boolean, default: false, index: true },
     addresses: { type: [addressSchema], default: [] },
     refreshTokens: { type: [String], default: [], select: false },
   },
@@ -52,6 +55,7 @@ userSchema.methods.toPublic = function () {
     email: this.email,
     phone: this.phone,
     role: this.role,
+    blocked: !!this.blocked,
     addresses: this.addresses,
     createdAt: this.createdAt,
   };

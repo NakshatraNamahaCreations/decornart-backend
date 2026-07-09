@@ -33,6 +33,7 @@ async function login({ email, password }) {
   if (!user) throw ApiError.unauthorized("Invalid credentials");
   const valid = await user.verifyPassword(password);
   if (!valid) throw ApiError.unauthorized("Invalid credentials");
+  if (user.blocked) throw ApiError.forbidden("This account has been suspended");
 
   const tokens = signTokens(user);
   // keep last 5 sessions

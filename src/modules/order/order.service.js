@@ -24,7 +24,11 @@ function genOrderNumber() {
  */
 async function createFromCart(user, { shippingAddress }) {
   const cart = await cartService.getOrCreate(user.id, false);
-  const hydrated = await cartService.hydrate(cart);
+  // Passing the shipping pincode makes hydrate compute the same shipping
+  // charge the shopper saw at checkout — no drift between preview and order.
+  const hydrated = await cartService.hydrate(cart, {
+    pincode: shippingAddress?.pincode,
+  });
   if (!hydrated.items.length) throw ApiError.badRequest("Cart is empty");
 
   const orderNumber = genOrderNumber();

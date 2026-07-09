@@ -28,6 +28,9 @@ const protect = asyncHandler(async (req, _res, next) => {
   const payload = verify(token);
   const user = await User.findById(payload.sub).lean();
   if (!user) throw ApiError.unauthorized("Account no longer exists");
+  // Admin can flip user.blocked at any time; reject mid-session so blocked
+  // users can't continue calling protected routes with an old JWT.
+  if (user.blocked) throw ApiError.forbidden("This account has been suspended");
   req.user = { id: String(user._id), email: user.email, role: user.role, name: user.name };
   next();
 });

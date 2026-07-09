@@ -4,9 +4,9 @@ const { z } = require("zod");
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id");
 
-// Craft-supply category slugs. Mirrors decornart-bouquets/lib/data/
-// categories.js and decornart-admin's ProductForm so all three layers
-// agree on the allowed values.
+// Legacy list — retained only for callers that still import `CATEGORIES`.
+// Real category slugs live in the DB (Category collection); we now accept
+// any well-formed slug and validate existence at the service layer.
 const CATEGORIES = [
   "flower-basket-materials",
   "gift-cards",
@@ -18,7 +18,11 @@ const CATEGORIES = [
   "wrapping-papers",
 ];
 
-const categoryEnum = z.enum(CATEGORIES);
+const categoryEnum = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9-]+$/, "Invalid category slug");
 
 // Specifications block — every key is optional so partial sets are fine.
 const specsSchema = z
@@ -81,4 +85,90 @@ const listQuery = z.object({
   category: categoryEnum.optional(),
 });
 
-module.exports = { productBody, productUpdate, idParam, listQuery, CATEGORIES };
+// ── Orders ──────────────────────────────────────────────────────────────
+const orderListQuery = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  q: z.string().trim().max(120).optional(),
+  status: z
+    .enum(["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "all"])
+    .optional(),
+  paymentStatus: z.enum(["created", "paid", "failed", "refunded", "all"]).optional(),
+  dateFrom: z.string().datetime().optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+  dateTo: z.string().datetime().optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+});
+
+const orderStatusUpdate = z.object({
+  status: z.enum([
+    "pending",
+    "confirmed",
+    "processing",
+    "shipped",
+    "delivered",
+    "cancelled",
+  ]),
+  note: z.string().trim().max(500).optional(),
+  tracking: z
+    .object({
+      awb: z.string().trim().max(80).optional(),
+      courier: z.string().trim().max(80).optional(),
+      url: z.string().trim().url().max(500).optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+const orderNoteBody = z.object({
+  note: z.string().trim().min(1).max(2000),
+});
+
+const orderRefundBody = z.object({
+  note: z.string().trim().max(500).optional(),
+});
+
+// ── Customers ──────────────────────────────────────────────────────────
+const customerListQuery = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  q: z.string().trim().max(120).optional(),
+  status: z.enum(["all", "active", "blocked"]).optional(),
+});
+
+const customerBlockBody = z.object({
+  blocked: z.boolean(),
+});
+
+// ── Categories ─────────────────────────────────────────────────────────
+const categoryBody = z.object({
+  slug: categoryEnum,
+  name: z.string().trim().min(2).max(120),
+  description: z.string().trim().max(500).optional(),
+  banner: z.string().trim().url().max(500).optional().or(z.literal("")),
+  image: z.string().trim().url().max(500).optional().or(z.literal("")),
+  position: z.coerce.number().int().min(0).optional(),
+  parent: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(),
+  active: z.boolean().optional(),
+});
+
+const categoryUpdate = categoryBody.partial();
+
+const categoryReorderBody = z.object({
+  ids: z.array(z.string().regex(/^[a-f\d]{24}$/i)).min(1),
+});
+
+module.exports = {
+  productBody,
+  productUpdate,
+  idParam,
+  listQuery,
+  orderListQuery,
+  orderStatusUpdate,
+  orderNoteBody,
+  orderRefundBody,
+  customerListQuery,
+  customerBlockBody,
+  categoryBody,
+  categoryUpdate,
+  categoryReorderBody,
+  CATEGORIES,
+};

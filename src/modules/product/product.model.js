@@ -2,8 +2,10 @@
 
 const mongoose = require("mongoose");
 
-// Craft-supply categories. Mirrors the enums in admin.validation.js /
-// product.validation.js and the storefront's lib/data/categories.js.
+// Legacy list — kept only for the exported `CATEGORIES` constant that a few
+// call sites still import. Categories now live in their own collection; the
+// product's `category` field is a free-text slug validated against the
+// Category collection at the admin controller layer.
 const CATEGORIES = [
   "flower-basket-materials",
   "gift-cards",
@@ -23,8 +25,9 @@ const productSchema = new mongoose.Schema(
     price: { type: Number, required: true, min: 0 },
     category: {
       type: String,
-      enum: CATEGORIES,
       required: true,
+      trim: true,
+      lowercase: true,
       index: true,
     },
 

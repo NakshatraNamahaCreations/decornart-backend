@@ -2,10 +2,15 @@
 
 const Cart = require("./cart.model");
 const Product = require("../product/product.model");
+const settingsService = require("../settings/settings.service");
+const shippingService = require("../shipping/shipping.service");
 const config = require("../../config");
 const { ApiError } = require("../../utils/ApiError");
 
-const { gstRate, freeShippingOver, flatShipping, promoCodes } = config.commerce;
+// Legacy config-based promoCodes still supported (kept as a static fallback
+// alongside DB-driven coupons). Tax/shipping now come from Settings +
+// ShippingRule; the config values are used only if settings can't be read.
+const { promoCodes } = config.commerce;
 
 async function getOrCreate(owner, isGuest) {
   let cart = await Cart.findOne({ owner });
@@ -15,9 +20,11 @@ async function getOrCreate(owner, isGuest) {
 
 /**
  * Hydrates lines to full product cards in ONE query (batched $in lookup, not a
- * find-per-line N+1) and computes all money on the server.
+ * find-per-line N+1) and computes all money on the server. Shipping and GST
+ * come from Settings + ShippingRule so admins can tune them without redeploy.
+ * Pass `pincode` to get a precise shipping preview; otherwise defaults apply.
  */
-async function hydrate(cart) {
+async function hydrate(cart, opts = {}) {
   const ids = cart.lines.map((l) => l.product);
   const products = ids.length
     ? await Product.find({ _id: { $in: ids } })
@@ -44,8 +51,27 @@ async function hydrate(cart) {
   }
 
   const subtotal = items.reduce((s, i) => s + i.lineTotal, 0);
+
+  // Settings-driven tax + shipping. Failing gracefully to config defaults so
+  // a broken settings doc can never brick the cart.
+  let gstRate = config.commerce.gstRate;
+  let quote = null;
+  try {
+    const settings = await settingsService.get();
+    gstRate = settings.tax?.gstRate ?? gstRate;
+    quote = await shippingService.quote({ pincode: opts.pincode, subtotal });
+  } catch {
+    /* fall back to config-based numbers */
+  }
+
   const gst = Math.round(subtotal * gstRate);
-  const shipping = subtotal === 0 ? 0 : subtotal >= freeShippingOver ? 0 : flatShipping;
+  const shipping = quote
+    ? quote.charge
+    : subtotal === 0
+      ? 0
+      : subtotal >= config.commerce.freeShippingOver
+        ? 0
+        : config.commerce.flatShipping;
 
   let discount = 0;
   const pct = cart.promoCode ? promoCodes[cart.promoCode] : 0;
@@ -64,8 +90,12 @@ async function hydrate(cart) {
       shipping,
       discount,
       total,
-      freeShippingOver,
-      toFreeShipping: Math.max(0, freeShippingOver - subtotal),
+      freeShippingOver: quote?.freeShippingThreshold ?? config.commerce.freeShippingOver,
+      toFreeShipping: Math.max(
+        0,
+        (quote?.freeShippingThreshold ?? config.commerce.freeShippingOver) - subtotal
+      ),
+      shippingQuote: quote,
     },
   };
 }
