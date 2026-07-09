@@ -25,6 +25,7 @@ const listQuery = z.object({
   sort: z.enum(["featured", "price-asc", "price-desc", "newest"]).optional(),
   q: z.string().trim().max(80).optional(),
   bestseller: z.coerce.boolean().optional(),
+  isNew: z.coerce.boolean().optional(),
 });
 
 const slugParam = z.object({

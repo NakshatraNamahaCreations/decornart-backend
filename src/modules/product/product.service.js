@@ -19,6 +19,7 @@ function buildFilter(q) {
   if (q.category) filter.category = q.category;
   if (q.occasion) filter.occasions = q.occasion;
   if (q.bestseller) filter.isBestseller = true;
+  if (q.isNew) filter.isNew = true;
   if (q.minPrice != null || q.maxPrice != null) {
     filter.price = {};
     if (q.minPrice != null) filter.price.$gte = q.minPrice;
