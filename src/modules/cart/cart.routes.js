@@ -11,8 +11,16 @@ router.use(optionalAuth);
 
 router.get("/", ctrl.get);
 router.post("/items", validate({ body: v.addItem }), ctrl.addItem);
-router.patch("/items/:productId", validate({ params: v.itemParam, body: v.updateItem }), ctrl.updateItem);
-router.delete("/items/:productId", validate({ params: v.itemParam }), ctrl.removeItem);
+router.patch(
+  "/items/:productId",
+  validate({ params: v.itemParam, body: v.updateItem, query: v.itemQuery }),
+  ctrl.updateItem
+);
+router.delete(
+  "/items/:productId",
+  validate({ params: v.itemParam, query: v.itemQuery }),
+  ctrl.removeItem
+);
 router.post("/promo", validate({ body: v.promo }), ctrl.applyPromo);
 
 module.exports = router;

@@ -69,4 +69,39 @@ async function logout(userId, refreshToken) {
   await User.updateOne({ _id: userId }, { $pull: { refreshTokens: refreshToken } });
 }
 
-module.exports = { register, login, refresh, logout };
+/**
+ * Partial profile update — name / email / phone. Email conflict check runs
+ * only when the incoming value differs from the current one so no-op saves
+ * don't trip on the shopper's own row.
+ */
+async function updateProfile(userId, payload) {
+  const user = await User.findById(userId);
+  if (!user) throw ApiError.notFound("User not found");
+  if (payload.email && payload.email !== user.email) {
+    const taken = await User.exists({ email: payload.email, _id: { $ne: userId } });
+    if (taken) throw ApiError.conflict("Email already registered");
+    user.email = payload.email;
+  }
+  if (payload.name != null) user.name = payload.name;
+  if (payload.phone != null) user.phone = payload.phone;
+  await user.save();
+  return user.toPublic();
+}
+
+/**
+ * Verify the current password before setting the new one and revoke ALL
+ * outstanding refresh tokens so any concurrent sessions are booted after a
+ * password change (standard security posture).
+ */
+async function changePassword(userId, { currentPassword, newPassword }) {
+  const user = await User.findById(userId).select("+passwordHash +refreshTokens");
+  if (!user) throw ApiError.notFound("User not found");
+  const ok = await user.verifyPassword(currentPassword);
+  if (!ok) throw ApiError.unauthorized("Current password is incorrect");
+  await user.setPassword(newPassword);
+  user.refreshTokens = [];
+  await user.save();
+  return { ok: true };
+}
+
+module.exports = { register, login, refresh, logout, updateProfile, changePassword };

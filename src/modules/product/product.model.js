@@ -60,6 +60,24 @@ const productSchema = new mongoose.Schema(
     // page. Empty array means the product has no color selector.
     colors: { type: [String], default: [] },
 
+    // ── Priced variants (e.g. "6mm" / "8mm" pipe cleaners, "50 g" / "100 g"
+    // yarn). When present, the shopper picks one at add-to-cart time and
+    // that variant's price/image/stock override the parent product's.
+    // Empty array means "no variants — single-price product". Mongoose
+    // auto-assigns each subdoc an `_id` which we surface as `id` in the API.
+    // Label rendered above the variant picker on the storefront (e.g.
+    // "Thickness", "Size", "Weight"). Falls back to "Variant" client-side.
+    variantLabel: { type: String, trim: true, default: "", maxlength: 40 },
+    variants: [
+      {
+        name: { type: String, required: true, trim: true, maxlength: 60 },
+        price: { type: Number, required: true, min: 0 },
+        stock: { type: Number, default: 100, min: 0 },
+        sku: { type: String, trim: true, default: "", maxlength: 80 },
+        image: { type: String, trim: true, default: "" },
+      },
+    ],
+
     // ── Legacy use-case tags (storefront filter still reads these;
     // admin no longer writes them but old docs may still have them).
     occasion: { type: String, trim: true },

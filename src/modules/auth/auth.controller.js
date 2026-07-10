@@ -61,4 +61,49 @@ const addAddress = asyncHandler(async (req, res) => {
   return created(res, user.addresses);
 });
 
-module.exports = { register, login, refresh, logout, me, addAddress };
+const updateAddress = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) throw ApiError.notFound("User not found");
+  const target = user.addresses.id(req.params.id);
+  if (!target) throw ApiError.notFound("Address not found");
+  // When isDefault flips on, unset the flag on all siblings first.
+  if (req.body.isDefault === true) {
+    user.addresses.forEach((a) => {
+      if (String(a._id) !== String(target._id)) a.isDefault = false;
+    });
+  }
+  Object.assign(target, req.body);
+  await user.save();
+  return ok(res, user.addresses);
+});
+
+const deleteAddress = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) throw ApiError.notFound("User not found");
+  const target = user.addresses.id(req.params.id);
+  if (!target) throw ApiError.notFound("Address not found");
+  target.deleteOne();
+  await user.save();
+  return ok(res, user.addresses);
+});
+
+const updateProfile = asyncHandler(async (req, res) => {
+  return ok(res, await service.updateProfile(req.user.id, req.body));
+});
+
+const changePassword = asyncHandler(async (req, res) => {
+  return ok(res, await service.changePassword(req.user.id, req.body));
+});
+
+module.exports = {
+  register,
+  login,
+  refresh,
+  logout,
+  me,
+  addAddress,
+  updateAddress,
+  deleteAddress,
+  updateProfile,
+  changePassword,
+};

@@ -42,6 +42,15 @@ const faqSchema = z.object({
   a: z.string().trim().min(1).max(2000),
 });
 
+// Priced variants (e.g. "6mm" / "8mm"). Only `name` and `price` are required.
+const variantSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  price: z.coerce.number().min(0),
+  stock: z.coerce.number().int().min(0).optional(),
+  sku: z.string().trim().max(80).optional(),
+  image: z.string().trim().url().max(600).optional().or(z.literal("")),
+});
+
 const productBody = z.object({
   slug: z
     .string()
@@ -61,6 +70,10 @@ const productBody = z.object({
   // Optional color variants (e.g., ["Red", "Blue"]). Empty array means
   // no color selector on the storefront.
   colors: z.array(z.string().trim().min(1).max(40)).optional(),
+  // Optional priced variants — see variantSchema above.
+  variants: z.array(variantSchema).optional(),
+  // Section label rendered above the variant chips on the storefront.
+  variantLabel: z.string().trim().max(40).optional().or(z.literal("")),
   // Legacy use-case tags — admin no longer writes these but the
   // storefront filter still reads them, so keep them accepted on the
   // payload for backwards compat with older data flows.

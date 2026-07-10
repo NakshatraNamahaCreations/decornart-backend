@@ -28,12 +28,29 @@ const addItem = asyncHandler(async (req, res) => {
 
 const updateItem = asyncHandler(async (req, res) => {
   const { owner, isGuest } = resolveOwner(req);
-  return ok(res, await service.updateItem(owner, isGuest, req.params.productId, req.body.qty));
+  return ok(
+    res,
+    await service.updateItem(
+      owner,
+      isGuest,
+      req.params.productId,
+      req.body.qty,
+      req.query.variantId || null
+    )
+  );
 });
 
 const removeItem = asyncHandler(async (req, res) => {
   const { owner, isGuest } = resolveOwner(req);
-  return ok(res, await service.removeItem(owner, isGuest, req.params.productId));
+  return ok(
+    res,
+    await service.removeItem(
+      owner,
+      isGuest,
+      req.params.productId,
+      req.query.variantId || null
+    )
+  );
 });
 
 const applyPromo = asyncHandler(async (req, res) => {

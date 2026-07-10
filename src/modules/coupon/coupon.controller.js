@@ -33,4 +33,9 @@ const validate = asyncHandler(async (req, res) => {
   return ok(res, preview);
 });
 
-module.exports = { list, getOne, createOne, updateOne, deleteOne, validate };
+// ── Public — active coupons for storefront display ───────────────────
+const listPublic = asyncHandler(async (_req, res) => {
+  return ok(res, await service.listPublic());
+});
+
+module.exports = { list, getOne, createOne, updateOne, deleteOne, validate, listPublic };

@@ -5,8 +5,17 @@ const mongoose = require("mongoose");
 const orderLineSchema = new mongoose.Schema(
   {
     product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+    // Snapshot of the picked variant on Product.variants[] (if any) so the
+    // invoice / audit trail keeps a record even if the admin later renames
+    // or deletes the variant.
+    variantId: { type: String, default: null },
+    variantName: { type: String, default: "" },
     slug: String,
     name: String,
+    // Snapshot of the primary image at purchase time so account/order pages
+    // render the exact thumbnail the shopper saw at checkout, even if the
+    // product later has its imagery changed.
+    image: { type: String, default: "" },
     price: Number, // snapshot at purchase time
     qty: Number,
     lineTotal: Number,

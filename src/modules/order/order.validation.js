@@ -13,6 +13,10 @@ const create = z.object({
     pincode: z.string().trim().regex(/^\d{6}$/, "Pincode must be 6 digits"),
     phone: z.string().trim().min(7).max(20),
   }),
+  // Method the shopper picked at checkout. Backend maps this to the actual
+  // charge (never trusts a client-supplied amount) so the Razorpay total
+  // matches what the shopper saw.
+  shippingMethod: z.enum(["standard", "express", "same-day"]),
 });
 
 const verify = z.object({

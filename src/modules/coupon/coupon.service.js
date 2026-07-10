@@ -113,6 +113,30 @@ async function validateForCart({ code, subtotal, userId }) {
   };
 }
 
+async function listPublic() {
+  const now = new Date();
+  const docs = await Coupon.find({
+    status: "active",
+    $or: [{ validFrom: { $lte: now } }, { validFrom: null }],
+    $and: [
+      { $or: [{ validTo: { $gte: now } }, { validTo: null }] },
+    ],
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+  return docs
+    .filter((c) => !(c.usageLimit > 0 && c.usageCount >= c.usageLimit))
+    .map((c) => ({
+      code: c.code,
+      description: c.description || "",
+      discountType: c.discountType,
+      discountValue: c.discountValue,
+      maxDiscount: c.maxDiscount || 0,
+      minOrderValue: c.minOrderValue || 0,
+      validTo: c.validTo,
+    }));
+}
+
 async function incrementUsage(code) {
   if (!code) return;
   await Coupon.updateOne({ code: code.toUpperCase() }, { $inc: { usageCount: 1 } });
@@ -140,4 +164,4 @@ function serialize(c) {
   };
 }
 
-module.exports = { list, getById, create, update, remove, validateForCart, incrementUsage };
+module.exports = { list, listPublic, getById, create, update, remove, validateForCart, incrementUsage };

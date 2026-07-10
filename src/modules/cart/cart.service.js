@@ -4,12 +4,14 @@ const Cart = require("./cart.model");
 const Product = require("../product/product.model");
 const settingsService = require("../settings/settings.service");
 const shippingService = require("../shipping/shipping.service");
+const couponService = require("../coupon/coupon.service");
 const config = require("../../config");
 const { ApiError } = require("../../utils/ApiError");
 
 // Legacy config-based promoCodes still supported (kept as a static fallback
-// alongside DB-driven coupons). Tax/shipping now come from Settings +
-// ShippingRule; the config values are used only if settings can't be read.
+// alongside DB-driven coupons managed from the admin panel). Tax/shipping now
+// come from Settings + ShippingRule; the config values are used only if
+// settings can't be read.
 const { promoCodes } = config.commerce;
 
 async function getOrCreate(owner, isGuest) {
@@ -26,9 +28,11 @@ async function getOrCreate(owner, isGuest) {
  */
 async function hydrate(cart, opts = {}) {
   const ids = cart.lines.map((l) => l.product);
+  // Include `variants` so we can pluck price/image per line when a variantId
+  // was recorded on the cart line.
   const products = ids.length
     ? await Product.find({ _id: { $in: ids } })
-        .select("slug name price images stock category")
+        .select("slug name price images stock category variants")
         .lean()
     : [];
   const byId = new Map(products.map((p) => [String(p._id), p]));
@@ -37,16 +41,29 @@ async function hydrate(cart, opts = {}) {
   for (const line of cart.lines) {
     const p = byId.get(String(line.product));
     if (!p) continue; // product removed since add — skip gracefully
-    const qty = Math.min(line.qty, p.stock || line.qty);
+    // Variant lookup: when the line was added with a variantId, the picked
+    // variant's price/image/stock override the parent product's. If the
+    // variant was later deleted by the admin, fall back to the parent.
+    const variant =
+      line.variantId && Array.isArray(p.variants)
+        ? p.variants.find((v) => String(v._id) === String(line.variantId))
+        : null;
+    const price = variant ? variant.price : p.price;
+    const stock = variant ? variant.stock : p.stock;
+    const image = variant?.image || (p.images && p.images[0]) || null;
+    const displayName = variant ? `${p.name} — ${variant.name}` : p.name;
+    const qty = Math.min(line.qty, stock || line.qty);
     items.push({
       productId: String(p._id),
+      variantId: line.variantId || null,
+      variantName: variant?.name || null,
       slug: p.slug,
-      name: p.name,
-      price: p.price,
-      image: (p.images && p.images[0]) || null,
+      name: displayName,
+      price,
+      image,
       category: p.category,
       qty,
-      lineTotal: p.price * qty,
+      lineTotal: price * qty,
     });
   }
 
@@ -65,17 +82,46 @@ async function hydrate(cart, opts = {}) {
   }
 
   const gst = Math.round(subtotal * gstRate);
-  const shipping = quote
+  // Baseline "standard" charge from quote (or config fallback). Order flow
+  // overrides this with an express/same-day flat rate when the shopper picks
+  // one — cart preview keeps the standard number so the storefront UI stays
+  // stable until checkout.
+  const standardCharge = quote
     ? quote.charge
     : subtotal === 0
       ? 0
       : subtotal >= config.commerce.freeShippingOver
         ? 0
         : config.commerce.flatShipping;
+  const SHIPPING_METHOD_CHARGES = { express: 150, "same-day": 250 };
+  const shipping =
+    opts.shippingMethod && opts.shippingMethod !== "standard"
+      ? SHIPPING_METHOD_CHARGES[opts.shippingMethod] ?? standardCharge
+      : standardCharge;
 
+  // Discount resolution — prefer DB-driven coupons (admin panel), fall back
+  // to the legacy static promoCodes map. If a code stored on the cart no
+  // longer validates (expired, min-order not met, etc.), we drop the discount
+  // silently and let the UI surface the message on the next explicit apply.
   let discount = 0;
-  const pct = cart.promoCode ? promoCodes[cart.promoCode] : 0;
-  if (pct) discount = Math.round(subtotal * pct);
+  if (cart.promoCode) {
+    let handled = false;
+    try {
+      const preview = await couponService.validateForCart({
+        code: cart.promoCode,
+        subtotal,
+        userId: opts.userId || null,
+      });
+      discount = preview.discount;
+      handled = true;
+    } catch {
+      /* fall through to legacy map */
+    }
+    if (!handled) {
+      const pct = promoCodes[cart.promoCode];
+      if (pct) discount = Math.round(subtotal * pct);
+    }
+  }
 
   const total = Math.max(0, subtotal + gst + shipping - discount);
 
@@ -102,46 +148,89 @@ async function hydrate(cart, opts = {}) {
 
 async function get(owner, isGuest) {
   const cart = await getOrCreate(owner, isGuest);
-  return hydrate(cart);
+  return hydrate(cart, { userId: isGuest ? null : owner });
 }
 
-async function addItem(owner, isGuest, { productId, qty }) {
-  const product = await Product.findOne({ _id: productId, status: "active" }).select("stock").lean();
+// Lines are keyed by (product, variantId). Two lines with the same product
+// but different variants (e.g. 6mm vs 8mm) are stored separately.
+function matchesLine(line, productId, variantId) {
+  const sameProduct = String(line.product) === String(productId);
+  const sameVariant =
+    (line.variantId || null) === (variantId || null);
+  return sameProduct && sameVariant;
+}
+
+async function addItem(owner, isGuest, { productId, qty, variantId = null }) {
+  const product = await Product.findOne({ _id: productId, status: "active" })
+    .select("stock variants")
+    .lean();
   if (!product) throw ApiError.notFound("Product not available");
-  if (product.stock < qty) throw ApiError.badRequest("Not enough stock");
+
+  // Resolve stock against the picked variant when the caller supplied a
+  // variantId. If the variantId is unknown, reject cleanly rather than
+  // silently falling back to the parent product.
+  let stock = product.stock;
+  if (variantId) {
+    const variant = (product.variants || []).find(
+      (v) => String(v._id) === String(variantId)
+    );
+    if (!variant) throw ApiError.badRequest("Unknown variant");
+    stock = variant.stock;
+  }
+  if (stock < qty) throw ApiError.badRequest("Not enough stock");
 
   const cart = await getOrCreate(owner, isGuest);
-  const existing = cart.lines.find((l) => String(l.product) === productId);
+  const existing = cart.lines.find((l) =>
+    matchesLine(l, productId, variantId)
+  );
   if (existing) existing.qty = Math.min(99, existing.qty + qty);
-  else cart.lines.push({ product: productId, qty });
+  else cart.lines.push({ product: productId, variantId: variantId || null, qty });
   await cart.save();
   return hydrate(cart);
 }
 
-async function updateItem(owner, isGuest, productId, qty) {
+async function updateItem(owner, isGuest, productId, qty, variantId = null) {
   const cart = await getOrCreate(owner, isGuest);
-  const line = cart.lines.find((l) => String(l.product) === productId);
+  const line = cart.lines.find((l) => matchesLine(l, productId, variantId));
   if (!line) throw ApiError.notFound("Item not in cart");
-  if (qty === 0) cart.lines = cart.lines.filter((l) => String(l.product) !== productId);
-  else line.qty = qty;
+  if (qty === 0) {
+    cart.lines = cart.lines.filter((l) => !matchesLine(l, productId, variantId));
+  } else {
+    line.qty = qty;
+  }
   await cart.save();
   return hydrate(cart);
 }
 
-async function removeItem(owner, isGuest, productId) {
+async function removeItem(owner, isGuest, productId, variantId = null) {
   const cart = await getOrCreate(owner, isGuest);
-  cart.lines = cart.lines.filter((l) => String(l.product) !== productId);
+  cart.lines = cart.lines.filter((l) => !matchesLine(l, productId, variantId));
   await cart.save();
   return hydrate(cart);
 }
 
 async function applyPromo(owner, isGuest, code) {
   const normalized = code.toUpperCase();
-  if (!promoCodes[normalized]) throw ApiError.badRequest("Invalid promo code");
   const cart = await getOrCreate(owner, isGuest);
+
+  // Compute the current subtotal so the coupon validator can enforce the
+  // "minimum order value" rule against real numbers.
+  const preview = await hydrate(cart);
+  const subtotal = preview.summary.subtotal;
+  const userId = isGuest ? null : owner;
+
+  // Prefer DB-managed coupons; fall back to the legacy hard-coded map. When
+  // both fail, surface the DB validator's error (it's the more informative
+  // one — "coupon expired", "minimum order ₹1499", etc.).
+  try {
+    await couponService.validateForCart({ code: normalized, subtotal, userId });
+  } catch (dbErr) {
+    if (!promoCodes[normalized]) throw dbErr;
+  }
+
   cart.promoCode = normalized;
   await cart.save();
-  return hydrate(cart);
+  return hydrate(cart, { userId });
 }
 
 async function clear(owner) {

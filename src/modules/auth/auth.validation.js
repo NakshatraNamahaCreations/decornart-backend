@@ -19,9 +19,11 @@ const refresh = z.object({
 });
 
 const address = z.object({
+  name: z.string().trim().max(120).optional(),
   label: z.string().trim().max(40).optional(),
   line1: z.string().trim().min(3).max(160),
   line2: z.string().trim().max(160).optional(),
+  landmark: z.string().trim().max(160).optional(),
   city: z.string().trim().min(2).max(80),
   state: z.string().trim().min(2).max(80),
   pincode: z.string().trim().regex(/^\d{6}$/, "Pincode must be 6 digits"),
@@ -29,4 +31,34 @@ const address = z.object({
   isDefault: z.boolean().optional(),
 });
 
-module.exports = { register, login, refresh, address };
+// Partial for PATCH so the shopper can edit any subset of fields.
+const addressUpdate = address.partial();
+
+const addressIdParam = z.object({
+  id: z.string().regex(/^[a-f\d]{24}$/i, "Invalid address id"),
+});
+
+// Partial profile update — shopper can edit any subset of name/email/phone.
+const updateProfile = z
+  .object({
+    name: z.string().trim().min(2).max(120),
+    email: z.string().trim().email().toLowerCase(),
+    phone: z.string().trim().min(7).max(20),
+  })
+  .partial();
+
+const changePassword = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string().min(8).max(128),
+});
+
+module.exports = {
+  register,
+  login,
+  refresh,
+  address,
+  addressUpdate,
+  addressIdParam,
+  updateProfile,
+  changePassword,
+};

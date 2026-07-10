@@ -5,9 +5,13 @@ const bcrypt = require("bcryptjs");
 
 const addressSchema = new mongoose.Schema(
   {
-    label: { type: String, trim: true },
+    // Recipient name at this address — separate from `label` so admins /
+    // couriers still see who to hand the parcel to.
+    name: { type: String, trim: true },
+    label: { type: String, trim: true }, // e.g. "Home", "Office"
     line1: { type: String, trim: true },
     line2: { type: String, trim: true },
+    landmark: { type: String, trim: true },
     city: { type: String, trim: true },
     state: { type: String, trim: true },
     pincode: { type: String, trim: true },
