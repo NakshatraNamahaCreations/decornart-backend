@@ -7,8 +7,9 @@ const validate = require("../../middleware/validate");
 const { optionalAuth } = require("../../middleware/auth");
 
 // Public: list currently redeemable coupons (active, in-window, not fully used)
-// for the storefront to display on the cart.
-router.get("/", ctrl.listPublic);
+// for the storefront to display on the cart. optionalAuth so we can hide any
+// coupon the signed-in shopper has already exhausted per-user.
+router.get("/", optionalAuth, ctrl.listPublic);
 
 // Public: validate a code against a cart (guest or signed-in). optionalAuth
 // so per-user limits kick in for signed-in shoppers.

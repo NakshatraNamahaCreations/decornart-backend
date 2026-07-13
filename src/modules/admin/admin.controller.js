@@ -3,6 +3,7 @@
 const asyncHandler = require("../../utils/asyncHandler");
 const { ok, created } = require("../../utils/ApiResponse");
 const service = require("./admin.service");
+const orderService = require("../order/order.service");
 
 const listProducts = asyncHandler(async (req, res) => {
   const { items, meta } = await service.listProducts(req.query);
@@ -55,6 +56,14 @@ const paymentsSummary = asyncHandler(async (req, res) => {
   return ok(res, await service.paymentsSummary(req.query));
 });
 
+const paymentsReport = asyncHandler(async (req, res) => {
+  return ok(res, await service.paymentsReport(req.query));
+});
+
+const shippingReport = asyncHandler(async (req, res) => {
+  return ok(res, await service.shippingReport(req.query));
+});
+
 // ── Customers ──────────────────────────────────────────────────────────
 const listCustomers = asyncHandler(async (req, res) => {
   const { items, meta } = await service.listCustomers(req.query);
@@ -94,6 +103,23 @@ const reorderCategories = asyncHandler(async (req, res) => {
   return ok(res, await service.reorderCategories(req.body.ids));
 });
 
+// ── Shiprocket admin actions ──────────────────────────────────────────
+const shiprocketRetry = asyncHandler(async (req, res) => {
+  return ok(res, await orderService.retryShiprocketSync(req.params.id));
+});
+const shiprocketPickup = asyncHandler(async (req, res) => {
+  return ok(res, await orderService.scheduleShiprocketPickup(req.params.id));
+});
+const shiprocketLabel = asyncHandler(async (req, res) => {
+  return ok(res, await orderService.generateShiprocketLabel(req.params.id));
+});
+const shiprocketCancel = asyncHandler(async (req, res) => {
+  return ok(res, await orderService.cancelShiprocketShipment(req.params.id));
+});
+const shiprocketTrack = asyncHandler(async (req, res) => {
+  return ok(res, await orderService.refreshShiprocketTracking(req.params.id));
+});
+
 module.exports = {
   listProducts,
   getProduct,
@@ -107,6 +133,8 @@ module.exports = {
   addOrderNote,
   refundPayment,
   paymentsSummary,
+  paymentsReport,
+  shippingReport,
   listCustomers,
   getCustomer,
   setCustomerBlocked,
@@ -116,4 +144,9 @@ module.exports = {
   updateCategory,
   deleteCategory,
   reorderCategories,
+  shiprocketRetry,
+  shiprocketPickup,
+  shiprocketLabel,
+  shiprocketCancel,
+  shiprocketTrack,
 };

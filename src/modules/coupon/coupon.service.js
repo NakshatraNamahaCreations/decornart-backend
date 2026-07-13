@@ -113,7 +113,7 @@ async function validateForCart({ code, subtotal, userId }) {
   };
 }
 
-async function listPublic() {
+async function listPublic({ userId } = {}) {
   const now = new Date();
   const docs = await Coupon.find({
     status: "active",
@@ -124,17 +124,44 @@ async function listPublic() {
   })
     .sort({ createdAt: -1 })
     .lean();
-  return docs
-    .filter((c) => !(c.usageLimit > 0 && c.usageCount >= c.usageLimit))
-    .map((c) => ({
-      code: c.code,
-      description: c.description || "",
-      discountType: c.discountType,
-      discountValue: c.discountValue,
-      maxDiscount: c.maxDiscount || 0,
-      minOrderValue: c.minOrderValue || 0,
-      validTo: c.validTo,
-    }));
+
+  // Drop coupons whose global cap is exhausted.
+  const notGloballyCapped = docs.filter(
+    (c) => !(c.usageLimit > 0 && c.usageCount >= c.usageLimit)
+  );
+
+  // For a signed-in shopper, hide any coupon they've already exhausted per-user.
+  // Guests see everything else — they haven't identified themselves yet.
+  let eligible = notGloballyCapped;
+  if (userId) {
+    const perUserCoupons = notGloballyCapped.filter((c) => c.perUserLimit > 0);
+    if (perUserCoupons.length) {
+      const counts = await Promise.all(
+        perUserCoupons.map((c) =>
+          Order.countDocuments({
+            user: userId,
+            promoCode: c.code,
+            "payment.status": "paid",
+          })
+        )
+      );
+      const usedByCode = new Map(perUserCoupons.map((c, i) => [c.code, counts[i]]));
+      eligible = notGloballyCapped.filter((c) => {
+        if (!(c.perUserLimit > 0)) return true;
+        return (usedByCode.get(c.code) || 0) < c.perUserLimit;
+      });
+    }
+  }
+
+  return eligible.map((c) => ({
+    code: c.code,
+    description: c.description || "",
+    discountType: c.discountType,
+    discountValue: c.discountValue,
+    maxDiscount: c.maxDiscount || 0,
+    minOrderValue: c.minOrderValue || 0,
+    validTo: c.validTo,
+  }));
 }
 
 async function incrementUsage(code) {

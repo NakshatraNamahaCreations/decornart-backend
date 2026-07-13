@@ -356,6 +356,240 @@ async function refundPayment(id, { note }, admin) {
   return serializeOrder(populated);
 }
 
+function buildDateMatch(query) {
+  const { dateFrom, dateTo } = query || {};
+  const match = {};
+  if (dateFrom || dateTo) {
+    match.createdAt = {};
+    if (dateFrom) match.createdAt.$gte = new Date(dateFrom);
+    if (dateTo) {
+      const end = new Date(dateTo);
+      if (String(dateTo).length === 10) end.setUTCHours(23, 59, 59, 999);
+      match.createdAt.$lte = end;
+    }
+  }
+  return match;
+}
+
+async function paymentsReport(query) {
+  const match = buildDateMatch(query);
+
+  const [statusAgg, providerAgg, dailyAgg, methodTotals] = await Promise.all([
+    Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$payment.status",
+          count: { $sum: 1 },
+          total: { $sum: "$summary.total" },
+        },
+      },
+    ]),
+    Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$payment.provider",
+          count: { $sum: 1 },
+          total: { $sum: "$summary.total" },
+        },
+      },
+    ]),
+    Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            status: "$payment.status",
+          },
+          count: { $sum: 1 },
+          total: { $sum: "$summary.total" },
+        },
+      },
+      { $sort: { "_id.date": 1 } },
+    ]),
+    Order.aggregate([
+      { $match: { ...match, "payment.status": "paid" } },
+      {
+        $group: {
+          _id: null,
+          gross: { $sum: "$summary.total" },
+          gst: { $sum: "$summary.gst" },
+          shipping: { $sum: "$summary.shipping" },
+          discount: { $sum: "$summary.discount" },
+          subtotal: { $sum: "$summary.subtotal" },
+          orderCount: { $sum: 1 },
+        },
+      },
+    ]),
+  ]);
+
+  const buckets = { paid: 0, failed: 0, created: 0, refunded: 0 };
+  const bucketRevenue = { paid: 0, failed: 0, created: 0, refunded: 0 };
+  for (const b of statusAgg) {
+    const key = b._id || "created";
+    if (buckets[key] !== undefined) {
+      buckets[key] = b.count;
+      bucketRevenue[key] = b.total;
+    }
+  }
+
+  // Merge daily rows by date (each date may have multiple status entries).
+  const daily = new Map();
+  for (const row of dailyAgg) {
+    const date = row._id.date;
+    const status = row._id.status || "created";
+    if (!daily.has(date)) {
+      daily.set(date, { date, paid: 0, failed: 0, created: 0, refunded: 0, paidRevenue: 0 });
+    }
+    const entry = daily.get(date);
+    if (entry[status] !== undefined) entry[status] = row.count;
+    if (status === "paid") entry.paidRevenue = row.total;
+  }
+
+  const totals = methodTotals[0] || {};
+
+  return {
+    counts: buckets,
+    revenueByStatus: bucketRevenue,
+    revenue: {
+      gross: bucketRevenue.paid,
+      refunded: bucketRevenue.refunded,
+      net: bucketRevenue.paid - bucketRevenue.refunded,
+      gst: totals.gst || 0,
+      shipping: totals.shipping || 0,
+      discount: totals.discount || 0,
+      subtotal: totals.subtotal || 0,
+      paidOrders: totals.orderCount || 0,
+      averageOrderValue: totals.orderCount ? (totals.gross || 0) / totals.orderCount : 0,
+    },
+    providers: providerAgg.map((p) => ({
+      provider: p._id || "unknown",
+      count: p.count,
+      total: p.total,
+    })),
+    daily: Array.from(daily.values()).sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
+
+async function shippingReport(query) {
+  const match = buildDateMatch(query);
+
+  const [statusAgg, courierAgg, totalsAgg, trackingAgg, topStatesAgg] = await Promise.all([
+    Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+          shippingRevenue: { $sum: "$summary.shipping" },
+        },
+      },
+    ]),
+    Order.aggregate([
+      { $match: { ...match, "tracking.courier": { $exists: true, $ne: "" } } },
+      {
+        $group: {
+          _id: "$tracking.courier",
+          count: { $sum: 1 },
+          shippingRevenue: { $sum: "$summary.shipping" },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]),
+    Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          totalShippingCharged: { $sum: "$summary.shipping" },
+          totalOrders: { $sum: 1 },
+        },
+      },
+    ]),
+    Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          withAwb: {
+            $sum: {
+              $cond: [{ $and: [{ $ne: ["$tracking.awb", null] }, { $ne: ["$tracking.awb", ""] }] }, 1, 0],
+            },
+          },
+          pickupScheduled: {
+            $sum: { $cond: [{ $eq: ["$tracking.pickupScheduled", true] }, 1, 0] },
+          },
+          delivered: {
+            $sum: { $cond: [{ $eq: ["$status", "delivered"] }, 1, 0] },
+          },
+          shipped: {
+            $sum: { $cond: [{ $eq: ["$status", "shipped"] }, 1, 0] },
+          },
+          cancelled: {
+            $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] },
+          },
+        },
+      },
+    ]),
+    Order.aggregate([
+      { $match: { ...match, "shippingAddress.state": { $exists: true, $ne: "" } } },
+      {
+        $group: {
+          _id: "$shippingAddress.state",
+          orders: { $sum: 1 },
+          shippingRevenue: { $sum: "$summary.shipping" },
+        },
+      },
+      { $sort: { orders: -1 } },
+      { $limit: 10 },
+    ]),
+  ]);
+
+  const statusBuckets = {
+    pending: 0,
+    confirmed: 0,
+    processing: 0,
+    shipped: 0,
+    delivered: 0,
+    cancelled: 0,
+  };
+  for (const s of statusAgg) {
+    const key = s._id || "pending";
+    if (statusBuckets[key] !== undefined) statusBuckets[key] = s.count;
+  }
+
+  const totals = totalsAgg[0] || {};
+  const tracking = trackingAgg[0] || {};
+
+  return {
+    counts: statusBuckets,
+    totals: {
+      orders: totals.totalOrders || 0,
+      shippingRevenue: totals.totalShippingCharged || 0,
+      averageShipping: totals.totalOrders ? (totals.totalShippingCharged || 0) / totals.totalOrders : 0,
+    },
+    tracking: {
+      withAwb: tracking.withAwb || 0,
+      pickupScheduled: tracking.pickupScheduled || 0,
+      delivered: tracking.delivered || 0,
+      shipped: tracking.shipped || 0,
+      cancelled: tracking.cancelled || 0,
+    },
+    couriers: courierAgg.map((c) => ({
+      courier: c._id || "unknown",
+      count: c.count,
+      shippingRevenue: c.shippingRevenue,
+    })),
+    topStates: topStatesAgg.map((s) => ({
+      state: s._id,
+      orders: s.orders,
+      shippingRevenue: s.shippingRevenue,
+    })),
+  };
+}
+
 async function paymentsSummary(query) {
   const { dateFrom, dateTo } = query || {};
   const match = {};
@@ -633,6 +867,8 @@ module.exports = {
   addOrderNote,
   refundPayment,
   paymentsSummary,
+  paymentsReport,
+  shippingReport,
   listCustomers,
   getCustomer,
   setCustomerBlocked,

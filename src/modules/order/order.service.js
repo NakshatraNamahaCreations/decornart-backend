@@ -7,6 +7,8 @@ const cartService = require("../cart/cart.service");
 const couponService = require("../coupon/coupon.service");
 const payment = require("../../services/payment.service");
 const email = require("../../services/email.service");
+const shiprocket = require("../../services/shiprocket.service");
+const logger = require("../../utils/logger");
 const { getPagination, buildMeta } = require("../../utils/paginate");
 const { ApiError } = require("../../utils/ApiError");
 
@@ -145,7 +147,56 @@ async function verifyPayment(user, { razorpayOrderId, razorpayPaymentId, razorpa
     html: `<p>Thank you, ${user.name}. Your order <b>${order.orderNumber}</b> is confirmed.</p>`,
   });
 
+  // Push to Shiprocket + auto-assign AWB. Detached and best-effort — a
+  // Shiprocket outage must NEVER fail the payment verification response
+  // (customer already paid). Any error just leaves tracking blank; admin
+  // can retry from the order detail page.
+  syncOrderToShiprocket(order, user).catch((err) => {
+    logger.warn("shiprocket sync failed for order", {
+      orderNumber: order.orderNumber,
+      err: err.message,
+    });
+  });
+
   return serialize(order);
+}
+
+/**
+ * Two-step Shiprocket sync run after a successful payment:
+ *   1. create the order on Shiprocket (returns shipmentId)
+ *   2. assign AWB to the shipment (returns awb + courier)
+ * Both step results are persisted to order.tracking. Second step failure
+ * is tolerated — we still keep the shiprocketOrderId so admin can retry.
+ */
+async function syncOrderToShiprocket(order, user) {
+  const created = await shiprocket.createOrder({
+    orderNumber: order.orderNumber,
+    createdAt: order.createdAt,
+    items: order.items,
+    summary: order.summary,
+    shippingAddress: order.shippingAddress,
+    customerEmail: user?.email,
+    payment: { status: order.payment.status },
+  });
+  order.tracking = order.tracking || {};
+  order.tracking.shiprocketOrderId = String(created.shiprocketOrderId || "");
+  order.tracking.shipmentId = String(created.shipmentId || "");
+  order.tracking.lastSyncedAt = new Date();
+
+  try {
+    const awb = await shiprocket.assignAWB(created.shipmentId);
+    if (awb.awb) {
+      order.tracking.awb = awb.awb;
+      order.tracking.courier = awb.courier || "";
+      order.tracking.url = awb.awb
+        ? `https://shiprocket.co/tracking/${awb.awb}`
+        : order.tracking.url;
+    }
+  } catch (err) {
+    logger.warn("shiprocket assignAWB failed", { err: err.message });
+  }
+
+  await order.save();
 }
 
 /**
@@ -223,4 +274,75 @@ function serializePlain(o) {
   };
 }
 
-module.exports = { createFromCart, verifyPayment, listForUser, getOne };
+// ── Admin actions on Shiprocket-side shipment lifecycle ────────────────
+// All of these look up the order by id, call the SR client, persist any
+// returned handles on order.tracking, and return the fresh order. Errors
+// bubble up — the admin controller turns them into 4xx/5xx.
+
+async function retryShiprocketSync(orderId) {
+  const order = await Order.findById(orderId);
+  if (!order) throw ApiError.notFound("Order not found");
+  await syncOrderToShiprocket(order, {});
+  return serialize(order);
+}
+
+async function scheduleShiprocketPickup(orderId) {
+  const order = await Order.findById(orderId);
+  if (!order) throw ApiError.notFound("Order not found");
+  const shipmentId = order.tracking?.shipmentId;
+  if (!shipmentId) throw ApiError.badRequest("Order not yet synced to Shiprocket");
+  const res = await shiprocket.requestPickup(shipmentId);
+  order.tracking.pickupScheduled = true;
+  if (res.pickupScheduledDate) {
+    order.tracking.pickupScheduledDate = new Date(res.pickupScheduledDate);
+  }
+  await order.save();
+  return serialize(order);
+}
+
+async function generateShiprocketLabel(orderId) {
+  const order = await Order.findById(orderId);
+  if (!order) throw ApiError.notFound("Order not found");
+  const shipmentId = order.tracking?.shipmentId;
+  if (!shipmentId) throw ApiError.badRequest("Order not yet synced to Shiprocket");
+  const res = await shiprocket.generateLabel(shipmentId);
+  if (res.labelUrl) {
+    order.tracking.labelUrl = res.labelUrl;
+    await order.save();
+  }
+  return serialize(order);
+}
+
+async function cancelShiprocketShipment(orderId) {
+  const order = await Order.findById(orderId);
+  if (!order) throw ApiError.notFound("Order not found");
+  const awb = order.tracking?.awb;
+  if (!awb) throw ApiError.badRequest("Order has no AWB assigned yet");
+  await shiprocket.cancelShipment(awb);
+  order.status = "cancelled";
+  await order.save();
+  return serialize(order);
+}
+
+async function refreshShiprocketTracking(orderId) {
+  const order = await Order.findById(orderId);
+  if (!order) throw ApiError.notFound("Order not found");
+  const awb = order.tracking?.awb;
+  if (!awb) throw ApiError.badRequest("Order has no AWB assigned yet");
+  const t = await shiprocket.trackByAWB(awb);
+  order.tracking.lastSyncedAt = new Date();
+  await order.save();
+  return { order: serialize(order), tracking: t };
+}
+
+module.exports = {
+  createFromCart,
+  verifyPayment,
+  listForUser,
+  getOne,
+  retryShiprocketSync,
+  scheduleShiprocketPickup,
+  generateShiprocketLabel,
+  cancelShiprocketShipment,
+  refreshShiprocketTracking,
+};

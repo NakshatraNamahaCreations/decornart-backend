@@ -95,6 +95,47 @@ const config = {
     flatShipping: 199,
     promoCodes: { ATELIER10: 0.1, BLOOM15: 0.15 },
   },
+
+  // Shiprocket courier aggregator. When `enabled=false` (default) the
+  // shiprocket.service runs in mock mode — returns deterministic fake
+  // responses so checkout + order sync work end-to-end without hitting
+  // Shiprocket. Flip `SHIPROCKET_ENABLED=true` and fill credentials to go live.
+  shiprocket: {
+    enabled: bool(process.env.SHIPROCKET_ENABLED, false),
+    baseUrl: process.env.SHIPROCKET_BASE_URL || "https://apiv2.shiprocket.in/v1",
+    // Two ways to authenticate with the Shiprocket API:
+    //   1) SHIPROCKET_TOKEN=<jwt>       — static bearer token, no login call
+    //   2) SHIPROCKET_EMAIL + PASSWORD  — dedicated "API User" you create at
+    //      Shiprocket Dashboard → Settings → API → Configure. This is a
+    //      different account from the OTP dashboard login.
+    // If both are set, the static token wins.
+    token: process.env.SHIPROCKET_TOKEN || "",
+    email: process.env.SHIPROCKET_EMAIL || "",
+    password: process.env.SHIPROCKET_PASSWORD || "",
+    // Pickup warehouse. Shiprocket references pickup locations by a nickname
+    // registered in their dashboard — the address fields are kept here for
+    // local display (invoices / admin UI) and for the mock path.
+    pickup: {
+      nickname: process.env.SHIPROCKET_PICKUP_NICKNAME || "Primary",
+      name: process.env.SHIPROCKET_PICKUP_NAME || "Decor N Art",
+      phone: process.env.SHIPROCKET_PICKUP_PHONE || "9876543210",
+      email: process.env.SHIPROCKET_PICKUP_EMAIL || "warehouse@decornart.in",
+      address: process.env.SHIPROCKET_PICKUP_ADDRESS || "12, Akkamahadevi Road",
+      address2: process.env.SHIPROCKET_PICKUP_ADDRESS_2 || "",
+      city: process.env.SHIPROCKET_PICKUP_CITY || "Mysore",
+      state: process.env.SHIPROCKET_PICKUP_STATE || "Karnataka",
+      pincode: process.env.SHIPROCKET_PICKUP_PINCODE || "570001",
+      country: process.env.SHIPROCKET_PICKUP_COUNTRY || "India",
+    },
+    // Default parcel dims used when a product doesn't carry its own weight /
+    // dimensions. Weight in kg, dims in cm.
+    defaultParcel: {
+      weightKg: Number(process.env.SHIPROCKET_DEFAULT_WEIGHT_KG || 0.5),
+      lengthCm: Number(process.env.SHIPROCKET_DEFAULT_LENGTH_CM || 20),
+      breadthCm: Number(process.env.SHIPROCKET_DEFAULT_BREADTH_CM || 15),
+      heightCm: Number(process.env.SHIPROCKET_DEFAULT_HEIGHT_CM || 10),
+    },
+  },
 };
 
 if (config.isProd) {

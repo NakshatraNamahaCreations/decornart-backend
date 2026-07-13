@@ -80,11 +80,23 @@ const orderSchema = new mongoose.Schema(
       default: "pending",
       index: true,
     },
-    // AWB / courier tracking — populated by the admin when the order ships.
+    // AWB / courier tracking. Populated automatically when the Shiprocket
+    // integration is enabled (order.service.verifyPayment calls the SR
+    // client and stashes the results here); admins can also edit these
+    // fields manually from the admin panel.
     tracking: {
       awb: { type: String, trim: true },
       courier: { type: String, trim: true },
       url: { type: String, trim: true },
+      // Shiprocket-specific handles so we can call subsequent APIs
+      // (pickup / label / cancel) without a second lookup.
+      shiprocketOrderId: { type: String, trim: true },
+      shipmentId: { type: String, trim: true },
+      courierCompanyId: { type: Number },
+      labelUrl: { type: String, trim: true },
+      pickupScheduled: { type: Boolean, default: false },
+      pickupScheduledDate: { type: Date },
+      lastSyncedAt: { type: Date },
     },
     adminNotes: { type: [adminNoteSchema], default: [] },
     statusHistory: { type: [statusEventSchema], default: [] },

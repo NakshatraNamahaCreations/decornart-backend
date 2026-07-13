@@ -3,6 +3,8 @@
 const ShippingRule = require("./shipping.model");
 const settings = require("../settings/settings.service");
 const cache = require("../../services/cache.service");
+const shiprocket = require("../../services/shiprocket.service");
+const logger = require("../../utils/logger");
 const { ApiError } = require("../../utils/ApiError");
 
 function invalidate() {
@@ -45,27 +47,65 @@ async function quote({ pincode, subtotal }) {
   } = s.checkout || {};
 
   const rule = pincode ? await findRule(pincode) : null;
-  const charge = rule ? rule.charge : defaultShippingCharge;
+
+  // Ask Shiprocket for a live rate when we have a pincode. Best-effort: any
+  // failure (network, breaker open, mock returns nothing) falls back to the
+  // local rule / defaults so checkout never blocks on shiprocket.
+  let srQuote = null;
+  if (pincode) {
+    try {
+      const s = await shiprocket.checkServiceability({
+        deliveryPincode: pincode,
+        subtotal,
+        cod: false,
+      });
+      if (s?.cheapest) srQuote = s.cheapest;
+    } catch (err) {
+      logger.warn("shiprocket serviceability failed; using local rule", {
+        err: err.message,
+      });
+    }
+  }
+
+  const baseCharge = srQuote
+    ? srQuote.rate
+    : rule
+      ? rule.charge
+      : defaultShippingCharge;
   const threshold = rule && rule.freeShippingThreshold > 0
     ? rule.freeShippingThreshold
     : freeShippingThreshold;
   const freeShipping = threshold > 0 && subtotal >= threshold;
-  const finalCharge = subtotal === 0 ? 0 : freeShipping ? 0 : charge;
+  const finalCharge = subtotal === 0 ? 0 : freeShipping ? 0 : baseCharge;
   const codAvailable = cartCodEnabled && s.payment?.codEnabled !== false && (rule ? rule.codAvailable : true);
 
   return {
     pincode: pincode || null,
     ruleId: rule ? String(rule._id) : null,
-    ruleName: rule ? rule.name : "default",
-    baseCharge: charge,
+    ruleName: srQuote?.courierName || (rule ? rule.name : "default"),
+    baseCharge,
     charge: finalCharge,
     freeShippingThreshold: threshold,
     freeShipping,
     codAvailable,
-    estimatedDays: rule
-      ? { min: rule.estimatedDaysMin || 3, max: rule.estimatedDaysMax || 7 }
-      : { min: 3, max: 7 },
+    estimatedDays: srQuote
+      ? parseEtd(srQuote.etd)
+      : rule
+        ? { min: rule.estimatedDaysMin || 3, max: rule.estimatedDaysMax || 7 }
+        : { min: 3, max: 7 },
+    provider: srQuote ? "shiprocket" : rule ? "rule" : "default",
+    courier: srQuote?.courierName || null,
   };
+}
+
+// "3-5 days" / "2 days" / "3-5" → { min, max } (defaults to 3/7 on garbage)
+function parseEtd(str) {
+  if (!str) return { min: 3, max: 7 };
+  const nums = String(str).match(/\d+/g);
+  if (!nums) return { min: 3, max: 7 };
+  const min = Number(nums[0]);
+  const max = Number(nums[1]) || min;
+  return { min, max };
 }
 
 // ── Admin CRUD ────────────────────────────────────────────────────────

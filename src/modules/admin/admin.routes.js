@@ -49,6 +49,17 @@ router.post(
 );
 router.get("/payments/summary", ctrl.paymentsSummary);
 
+// ── Reports ────────────────────────────────────────────────────────────
+router.get("/reports/payments", ctrl.paymentsReport);
+router.get("/reports/shipping", ctrl.shippingReport);
+
+// ── Shiprocket actions on a specific order ────────────────────────────
+router.post("/orders/:id/shiprocket/sync", validate({ params: v.idParam }), ctrl.shiprocketRetry);
+router.post("/orders/:id/shiprocket/pickup", validate({ params: v.idParam }), ctrl.shiprocketPickup);
+router.post("/orders/:id/shiprocket/label", validate({ params: v.idParam }), ctrl.shiprocketLabel);
+router.post("/orders/:id/shiprocket/cancel", validate({ params: v.idParam }), ctrl.shiprocketCancel);
+router.get("/orders/:id/shiprocket/track", validate({ params: v.idParam }), ctrl.shiprocketTrack);
+
 // ── Customers ──────────────────────────────────────────────────────────
 router.get("/customers", validate({ query: v.customerListQuery }), ctrl.listCustomers);
 router.get("/customers/:id", validate({ params: v.idParam }), ctrl.getCustomer);

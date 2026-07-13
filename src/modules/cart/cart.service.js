@@ -82,6 +82,11 @@ async function hydrate(cart, opts = {}) {
   }
 
   const gst = Math.round(subtotal * gstRate);
+  // TESTING: shipping charges disabled everywhere so the storefront total
+  // matches the Razorpay total without collecting a shipping fee. Restore
+  // the block below when re-enabling paid shipping.
+  const shipping = 0;
+  /*
   // Baseline "standard" charge from quote (or config fallback). Order flow
   // overrides this with an express/same-day flat rate when the shopper picks
   // one — cart preview keeps the standard number so the storefront UI stays
@@ -98,6 +103,7 @@ async function hydrate(cart, opts = {}) {
     opts.shippingMethod && opts.shippingMethod !== "standard"
       ? SHIPPING_METHOD_CHARGES[opts.shippingMethod] ?? standardCharge
       : standardCharge;
+  */
 
   // Discount resolution — prefer DB-driven coupons (admin panel), fall back
   // to the legacy static promoCodes map. If a code stored on the cart no
