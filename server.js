@@ -7,8 +7,15 @@ const logger = require("./src/utils/logger");
 const { connectDB, disconnectDB } = require("./src/config/db");
 const cache = require("./src/services/cache.service");
 const adminBootstrap = require("./src/services/adminBootstrap.service");
+const orderService = require("./src/modules/order/order.service");
 
 const server = http.createServer(app);
+
+// How often we sweep for paid orders whose Shiprocket push failed the first
+// time. 10 min balances "self-healing on transient outages" against wasted
+// API calls when there's nothing to retry.
+const SHIPROCKET_RETRY_INTERVAL_MS = 10 * 60 * 1000;
+let shiprocketSweepTimer = null;
 
 async function start() {
   // Connect DB but DON'T block server startup on it — if Mongo is down the
@@ -19,6 +26,22 @@ async function start() {
   // is reachable. Wired on the 'connected' event so it runs after reconnects
   // too, and runs immediately if we're already connected.
   adminBootstrap.wire();
+
+  // Background retrier for orders whose post-payment Shiprocket sync
+  // didn't stick the first time. Keeps the shipping side hands-off so an
+  // admin doesn't need to hit "Push to Shiprocket" for a transient failure.
+  shiprocketSweepTimer = setInterval(() => {
+    orderService
+      .retryPendingShiprocketSyncs()
+      .then((res) => {
+        if (res.attempted > 0) {
+          logger.info("shiprocket retry sweep", res);
+        }
+      })
+      .catch((err) => logger.warn("shiprocket sweep threw", { err: err.message }));
+  }, SHIPROCKET_RETRY_INTERVAL_MS);
+  // Don't hold the event loop open on shutdown.
+  shiprocketSweepTimer.unref();
 
   server.listen(config.port, () => {
     logger.info(`Decor N Art-backend listening`, { port: config.port, env: config.env });
@@ -48,6 +71,8 @@ async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info(`received ${signal}, shutting down gracefully`);
+
+  if (shiprocketSweepTimer) clearInterval(shiprocketSweepTimer);
 
   server.close(async () => {
     await Promise.allSettled([disconnectDB(), cache.close()]);

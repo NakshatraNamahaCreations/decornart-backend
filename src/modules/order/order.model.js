@@ -97,6 +97,12 @@ const orderSchema = new mongoose.Schema(
       pickupScheduled: { type: Boolean, default: false },
       pickupScheduledDate: { type: Date },
       lastSyncedAt: { type: Date },
+      // Populated when the automatic post-payment sync fails so the admin
+      // detail panel can show *why* the order didn't reach Shiprocket, and a
+      // background sweep can retry until it does. Cleared on success.
+      lastSyncError: { type: String, trim: true },
+      lastSyncErrorAt: { type: Date },
+      syncAttempts: { type: Number, default: 0 },
     },
     adminNotes: { type: [adminNoteSchema], default: [] },
     statusHistory: { type: [statusEventSchema], default: [] },

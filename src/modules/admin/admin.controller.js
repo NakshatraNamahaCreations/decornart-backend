@@ -104,20 +104,34 @@ const reorderCategories = asyncHandler(async (req, res) => {
 });
 
 // ── Shiprocket admin actions ──────────────────────────────────────────
+// Each SR endpoint mutates the order via order.service, but the admin
+// detail page needs the *admin* payload back (with adminNotes +
+// statusHistory) — order.service.serialize omits those, so re-fetch via
+// admin.service.getOrder for the response. Otherwise the SPA replaces
+// its rich state with a stripped one and crashes on `.length` reads.
 const shiprocketRetry = asyncHandler(async (req, res) => {
-  return ok(res, await orderService.retryShiprocketSync(req.params.id));
+  await orderService.retryShiprocketSync(req.params.id);
+  return ok(res, await service.getOrder(req.params.id));
 });
 const shiprocketPickup = asyncHandler(async (req, res) => {
-  return ok(res, await orderService.scheduleShiprocketPickup(req.params.id));
+  await orderService.scheduleShiprocketPickup(req.params.id);
+  return ok(res, await service.getOrder(req.params.id));
 });
 const shiprocketLabel = asyncHandler(async (req, res) => {
-  return ok(res, await orderService.generateShiprocketLabel(req.params.id));
+  await orderService.generateShiprocketLabel(req.params.id);
+  return ok(res, await service.getOrder(req.params.id));
 });
 const shiprocketCancel = asyncHandler(async (req, res) => {
-  return ok(res, await orderService.cancelShiprocketShipment(req.params.id));
+  await orderService.cancelShiprocketShipment(req.params.id);
+  return ok(res, await service.getOrder(req.params.id));
 });
 const shiprocketTrack = asyncHandler(async (req, res) => {
-  return ok(res, await orderService.refreshShiprocketTracking(req.params.id));
+  // refreshShiprocketTracking returns { order, tracking } — swap the
+  // plain order for the admin-serialized one so the SPA gets adminNotes
+  // + statusHistory alongside the fresh tracking payload.
+  const result = await orderService.refreshShiprocketTracking(req.params.id);
+  const fullOrder = await service.getOrder(req.params.id);
+  return ok(res, { order: fullOrder, tracking: result.tracking });
 });
 
 module.exports = {

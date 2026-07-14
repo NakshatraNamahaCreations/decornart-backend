@@ -167,21 +167,40 @@ async function verifyPayment(user, { razorpayOrderId, razorpayPaymentId, razorpa
  *   2. assign AWB to the shipment (returns awb + courier)
  * Both step results are persisted to order.tracking. Second step failure
  * is tolerated — we still keep the shiprocketOrderId so admin can retry.
+ *
+ * If step 1 throws we persist the error message on the order so the admin
+ * detail panel can show *why* the automatic push failed, and the background
+ * sweep (retryPendingShiprocketSyncs) can keep retrying until success.
  */
 async function syncOrderToShiprocket(order, user) {
-  const created = await shiprocket.createOrder({
-    orderNumber: order.orderNumber,
-    createdAt: order.createdAt,
-    items: order.items,
-    summary: order.summary,
-    shippingAddress: order.shippingAddress,
-    customerEmail: user?.email,
-    payment: { status: order.payment.status },
-  });
   order.tracking = order.tracking || {};
+  order.tracking.syncAttempts = (order.tracking.syncAttempts || 0) + 1;
+
+  let created;
+  try {
+    created = await shiprocket.createOrder({
+      orderNumber: order.orderNumber,
+      createdAt: order.createdAt,
+      items: order.items,
+      summary: order.summary,
+      shippingAddress: order.shippingAddress,
+      customerEmail: user?.email,
+      payment: { status: order.payment.status },
+    });
+  } catch (err) {
+    order.tracking.lastSyncError = err.message || String(err);
+    order.tracking.lastSyncErrorAt = new Date();
+    await order.save();
+    throw err;
+  }
+
   order.tracking.shiprocketOrderId = String(created.shiprocketOrderId || "");
   order.tracking.shipmentId = String(created.shipmentId || "");
   order.tracking.lastSyncedAt = new Date();
+  // createOrder succeeded — clear any prior failure so the admin panel
+  // doesn't keep flagging a resolved incident.
+  order.tracking.lastSyncError = "";
+  order.tracking.lastSyncErrorAt = undefined;
 
   try {
     const awb = await shiprocket.assignAWB(created.shipmentId);
@@ -197,6 +216,58 @@ async function syncOrderToShiprocket(order, user) {
   }
 
   await order.save();
+}
+
+/**
+ * Background sweep: find paid orders whose Shiprocket sync hasn't yet
+ * succeeded and retry them. Run on a timer from server.js so a transient
+ * SR outage during checkout heals itself without admin action.
+ *
+ * "Needs sync" = payment.status=paid AND tracking.shiprocketOrderId is
+ * missing/empty. `syncAttempts` gates a hard cap so a persistently
+ * failing order (bad address, missing pickup location on the SR dashboard)
+ * doesn't keep hammering the API forever — after MAX_ATTEMPTS the admin
+ * still has the manual "Push to Shiprocket" button.
+ */
+const MAX_SYNC_ATTEMPTS = 12; // 12 * 10min sweep = ~2 hours of retries
+
+async function retryPendingShiprocketSyncs() {
+  const orders = await Order.find({
+    "payment.status": "paid",
+    $or: [
+      { "tracking.shiprocketOrderId": { $in: [null, ""] } },
+      { "tracking.shiprocketOrderId": { $exists: false } },
+    ],
+    $and: [
+      {
+        $or: [
+          { "tracking.syncAttempts": { $lt: MAX_SYNC_ATTEMPTS } },
+          { "tracking.syncAttempts": { $exists: false } },
+        ],
+      },
+    ],
+  })
+    .populate("user", "email name")
+    .limit(20);
+
+  if (!orders.length) return { attempted: 0, ok: 0, failed: 0 };
+
+  let ok = 0;
+  let failed = 0;
+  for (const order of orders) {
+    try {
+      await syncOrderToShiprocket(order, order.user || {});
+      ok += 1;
+      logger.info("shiprocket auto-retry ok", { orderNumber: order.orderNumber });
+    } catch (err) {
+      failed += 1;
+      logger.warn("shiprocket auto-retry failed", {
+        orderNumber: order.orderNumber,
+        err: err.message,
+      });
+    }
+  }
+  return { attempted: orders.length, ok, failed };
 }
 
 /**
@@ -345,4 +416,5 @@ module.exports = {
   generateShiprocketLabel,
   cancelShiprocketShipment,
   refreshShiprocketTracking,
+  retryPendingShiprocketSyncs,
 };
