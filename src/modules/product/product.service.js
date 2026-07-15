@@ -62,6 +62,9 @@ async function list(query) {
       occasions: p.occasions,
       category: p.category,
       image: (p.images && p.images[0]) || null,
+      // Second image (if the admin uploaded one) doubles as the hover
+      // preview on ProductCard. Null when the product only has one image.
+      imageHover: (p.images && p.images[1]) || null,
       isNew: p.isNew,
       isBestseller: p.isBestseller,
       rating: p.rating,
@@ -100,6 +103,7 @@ async function getRelated(slug, limit = 4) {
     price: p.price,
     category: p.category,
     image: (p.images && p.images[0]) || null,
+    imageHover: (p.images && p.images[1]) || null,
     isNew: p.isNew,
     isBestseller: p.isBestseller,
     rating: p.rating,
