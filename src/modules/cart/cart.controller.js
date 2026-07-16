@@ -35,7 +35,8 @@ const updateItem = asyncHandler(async (req, res) => {
       isGuest,
       req.params.productId,
       req.body.qty,
-      req.query.variantId || null
+      req.query.variantId || null,
+      req.query.color || null
     )
   );
 });
@@ -48,7 +49,8 @@ const removeItem = asyncHandler(async (req, res) => {
       owner,
       isGuest,
       req.params.productId,
-      req.query.variantId || null
+      req.query.variantId || null,
+      req.query.color || null
     )
   );
 });

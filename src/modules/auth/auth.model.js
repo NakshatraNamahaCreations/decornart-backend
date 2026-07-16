@@ -40,6 +40,11 @@ const userSchema = new mongoose.Schema(
     blocked: { type: Boolean, default: false, index: true },
     addresses: { type: [addressSchema], default: [] },
     refreshTokens: { type: [String], default: [], select: false },
+    // Password reset — we store the SHA-256 hash of the token (never the raw
+    // value) so a database leak can't be used to hijack accounts. `select:
+    // false` keeps these off every read that doesn't explicitly ask for them.
+    resetTokenHash: { type: String, select: false },
+    resetTokenExpiresAt: { type: Date, select: false },
   },
   { timestamps: true }
 );

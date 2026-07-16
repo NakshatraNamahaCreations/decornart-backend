@@ -32,10 +32,41 @@ async function hydrate(cart, opts = {}) {
   // was recorded on the cart line.
   const products = ids.length
     ? await Product.find({ _id: { $in: ids } })
-        .select("slug name price images stock category variants")
+        .select("slug name price images stock category variants colorImages")
         .lean()
     : [];
   const byId = new Map(products.map((p) => [String(p._id), p]));
+
+  // Pipe cleaners share one aggregated palette across the whole category,
+  // so a shopper can pick a colour that isn't on THIS product's own
+  // `colorImages` list. Batch-fetch sibling pipe-cleaner products that
+  // do have those colours so the cart can still render the matching
+  // swatch image. One query per hydrate call regardless of cart size.
+  const missingPipeCleanerColors = new Set();
+  for (const line of cart.lines) {
+    const p = byId.get(String(line.product));
+    if (!p || !line.color || p.category !== "pipe-cleaners") continue;
+    const hasLocal =
+      Array.isArray(p.colorImages) &&
+      p.colorImages.some((c) => c && c.color === line.color);
+    if (!hasLocal) missingPipeCleanerColors.add(line.color);
+  }
+  const pipeCleanerFallback = new Map(); // color → image url
+  if (missingPipeCleanerColors.size > 0) {
+    const siblings = await Product.find({
+      category: "pipe-cleaners",
+      "colorImages.color": { $in: [...missingPipeCleanerColors] },
+    })
+      .select("colorImages")
+      .lean();
+    for (const s of siblings) {
+      for (const ci of s.colorImages || []) {
+        if (ci?.color && ci.image && !pipeCleanerFallback.has(ci.color)) {
+          pipeCleanerFallback.set(ci.color, ci.image);
+        }
+      }
+    }
+  }
 
   const items = [];
   for (const line of cart.lines) {
@@ -48,15 +79,28 @@ async function hydrate(cart, opts = {}) {
       line.variantId && Array.isArray(p.variants)
         ? p.variants.find((v) => String(v._id) === String(line.variantId))
         : null;
+    // Colour-image resolution: prefer this product's own upload for the
+    // picked colour, then any sibling pipe-cleaner product's upload for
+    // the same colour, then the variant / base image. Missing entries
+    // silently fall through.
+    const localColorImage =
+      line.color && Array.isArray(p.colorImages)
+        ? p.colorImages.find((c) => c && c.color === line.color)?.image
+        : null;
+    const colorImageUrl =
+      localColorImage ||
+      (line.color ? pipeCleanerFallback.get(line.color) : null);
     const price = variant ? variant.price : p.price;
     const stock = variant ? variant.stock : p.stock;
-    const image = variant?.image || (p.images && p.images[0]) || null;
+    const image =
+      colorImageUrl || variant?.image || (p.images && p.images[0]) || null;
     const displayName = variant ? `${p.name} — ${variant.name}` : p.name;
     const qty = Math.min(line.qty, stock || line.qty);
     items.push({
       productId: String(p._id),
       variantId: line.variantId || null,
       variantName: variant?.name || null,
+      color: line.color || null,
       slug: p.slug,
       name: displayName,
       price,
@@ -157,16 +201,18 @@ async function get(owner, isGuest) {
   return hydrate(cart, { userId: isGuest ? null : owner });
 }
 
-// Lines are keyed by (product, variantId). Two lines with the same product
-// but different variants (e.g. 6mm vs 8mm) are stored separately.
-function matchesLine(line, productId, variantId) {
+// Lines are keyed by (product, variantId, color). Two lines with the same
+// product but different variants (e.g. 6mm vs 8mm) or different colors
+// (e.g. Rose Red vs Blue) are stored separately.
+function matchesLine(line, productId, variantId, color) {
   const sameProduct = String(line.product) === String(productId);
   const sameVariant =
     (line.variantId || null) === (variantId || null);
-  return sameProduct && sameVariant;
+  const sameColor = (line.color || null) === (color || null);
+  return sameProduct && sameVariant && sameColor;
 }
 
-async function addItem(owner, isGuest, { productId, qty, variantId = null }) {
+async function addItem(owner, isGuest, { productId, qty, variantId = null, color = null }) {
   const product = await Product.findOne({ _id: productId, status: "active" })
     .select("stock variants")
     .lean();
@@ -185,22 +231,35 @@ async function addItem(owner, isGuest, { productId, qty, variantId = null }) {
   }
   if (stock < qty) throw ApiError.badRequest("Not enough stock");
 
+  // NOTE: colour is intentionally NOT validated against product.colors.
+  // Pipe-cleaner products show the shared category palette (aggregated
+  // across all pipe-cleaner SKUs), so a shopper can legitimately pick a
+  // colour that isn't on this specific product's list. The zod schema
+  // already length-bounds the value, which is all the safety we need for
+  // a free-form label.
+
   const cart = await getOrCreate(owner, isGuest);
   const existing = cart.lines.find((l) =>
-    matchesLine(l, productId, variantId)
+    matchesLine(l, productId, variantId, color)
   );
   if (existing) existing.qty = Math.min(99, existing.qty + qty);
-  else cart.lines.push({ product: productId, variantId: variantId || null, qty });
+  else
+    cart.lines.push({
+      product: productId,
+      variantId: variantId || null,
+      color: color || null,
+      qty,
+    });
   await cart.save();
   return hydrate(cart);
 }
 
-async function updateItem(owner, isGuest, productId, qty, variantId = null) {
+async function updateItem(owner, isGuest, productId, qty, variantId = null, color = null) {
   const cart = await getOrCreate(owner, isGuest);
-  const line = cart.lines.find((l) => matchesLine(l, productId, variantId));
+  const line = cart.lines.find((l) => matchesLine(l, productId, variantId, color));
   if (!line) throw ApiError.notFound("Item not in cart");
   if (qty === 0) {
-    cart.lines = cart.lines.filter((l) => !matchesLine(l, productId, variantId));
+    cart.lines = cart.lines.filter((l) => !matchesLine(l, productId, variantId, color));
   } else {
     line.qty = qty;
   }
@@ -208,9 +267,9 @@ async function updateItem(owner, isGuest, productId, qty, variantId = null) {
   return hydrate(cart);
 }
 
-async function removeItem(owner, isGuest, productId, variantId = null) {
+async function removeItem(owner, isGuest, productId, variantId = null, color = null) {
   const cart = await getOrCreate(owner, isGuest);
-  cart.lines = cart.lines.filter((l) => !matchesLine(l, productId, variantId));
+  cart.lines = cart.lines.filter((l) => !matchesLine(l, productId, variantId, color));
   await cart.save();
   return hydrate(cart);
 }

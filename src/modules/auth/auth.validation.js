@@ -52,6 +52,17 @@ const changePassword = z.object({
   newPassword: z.string().min(8).max(128),
 });
 
+const forgotPassword = z.object({
+  email: z.string().trim().email().toLowerCase(),
+});
+
+// The token is the raw 64-char hex string emailed to the shopper; the
+// backend hashes it before comparing against the stored hash.
+const resetPassword = z.object({
+  token: z.string().trim().min(20).max(128),
+  newPassword: z.string().min(8).max(128),
+});
+
 module.exports = {
   register,
   login,
@@ -61,4 +72,6 @@ module.exports = {
   addressIdParam,
   updateProfile,
   changePassword,
+  forgotPassword,
+  resetPassword,
 };

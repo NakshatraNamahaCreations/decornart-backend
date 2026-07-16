@@ -70,6 +70,30 @@ const productBody = z.object({
   // Optional color variants (e.g., ["Red", "Blue"]). Empty array means
   // no color selector on the storefront.
   colors: z.array(z.string().trim().min(1).max(40)).optional(),
+  // Feature badges rendered under the gallery on the product page. Icon
+  // is a key into the storefront's shared icon library (e.g. "soft",
+  // "bend"); an empty icon renders the row without a glyph.
+  featureBadges: z
+    .array(
+      z.object({
+        icon: z.string().trim().max(30).optional().or(z.literal("")),
+        title: z.string().trim().min(1).max(40),
+        copy: z.string().trim().max(60).optional().or(z.literal("")),
+      })
+    )
+    .max(8)
+    .optional(),
+  // Optional per-colour image overrides. When the shopper picks a colour
+  // in this list, the storefront swaps the hero image. Admins fill this
+  // in from the pipe-cleaners product form.
+  colorImages: z
+    .array(
+      z.object({
+        color: z.string().trim().min(1).max(40),
+        image: z.string().trim().url(),
+      })
+    )
+    .optional(),
   // Optional priced variants — see variantSchema above.
   variants: z.array(variantSchema).optional(),
   // Section label rendered above the variant chips on the storefront.

@@ -88,6 +88,11 @@ const config = {
     from: process.env.EMAIL_FROM || "Decor N Art <no-reply@Decor N Art.in>",
   },
 
+  // Base URL of the storefront — used by the backend to build email links
+  // (password reset, order confirmations, etc.). Set PUBLIC_APP_URL in prod
+  // to your live site so the reset link lands on the correct domain.
+  publicAppUrl: (process.env.PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, ""),
+
   // Commerce rules — kept server-side so the client can't tamper with totals.
   commerce: {
     gstRate: 0.05,

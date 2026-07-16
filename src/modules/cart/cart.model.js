@@ -9,6 +9,10 @@ const lineSchema = new mongoose.Schema(
     // _id). String rather than ObjectId so guest carts can be stringified /
     // deep-copied without Mongoose gotchas.
     variantId: { type: String, default: null },
+    // Optional — the picked color name (e.g. "Rose Red"). Two lines with
+    // the same product + variant but different colors are kept separate so
+    // the shopper sees each colour as its own row.
+    color: { type: String, default: null },
     qty: { type: Number, required: true, min: 1, max: 99 },
   },
   { _id: false }

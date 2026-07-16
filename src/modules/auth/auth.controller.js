@@ -95,6 +95,19 @@ const changePassword = asyncHandler(async (req, res) => {
   return ok(res, await service.changePassword(req.user.id, req.body));
 });
 
+// Public — always returns { ok: true } so an attacker can't enumerate
+// registered emails by watching the response. The service swallows the
+// "user not found" case for the same reason.
+const forgotPassword = asyncHandler(async (req, res) => {
+  return ok(res, await service.forgotPassword(req.body));
+});
+
+// Public — the token acts as the auth. The service revokes all refresh
+// tokens so any other sessions log out after the password change.
+const resetPassword = asyncHandler(async (req, res) => {
+  return ok(res, await service.resetPassword(req.body));
+});
+
 module.exports = {
   register,
   login,
@@ -106,4 +119,6 @@ module.exports = {
   deleteAddress,
   updateProfile,
   changePassword,
+  forgotPassword,
+  resetPassword,
 };

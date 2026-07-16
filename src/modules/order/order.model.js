@@ -10,6 +10,10 @@ const orderLineSchema = new mongoose.Schema(
     // or deletes the variant.
     variantId: { type: String, default: null },
     variantName: { type: String, default: "" },
+    // Snapshot of the picked color name (e.g. "Rose Red") so the invoice /
+    // account order page can render it even if the admin later removes the
+    // color from the product's palette.
+    color: { type: String, default: "" },
     slug: String,
     name: String,
     // Snapshot of the primary image at purchase time so account/order pages

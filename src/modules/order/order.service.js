@@ -53,6 +53,7 @@ async function createFromCart(user, { shippingAddress, shippingMethod }) {
       product: i.productId,
       variantId: i.variantId || null,
       variantName: i.variantName || "",
+      color: i.color || "",
       slug: i.slug,
       name: i.name,
       image: i.image || "",

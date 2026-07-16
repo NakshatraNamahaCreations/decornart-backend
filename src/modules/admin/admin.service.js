@@ -831,7 +831,20 @@ function serialize(doc) {
     usage: doc.usage || [],
     specs: doc.specs || {},
     faqs: doc.faqs || [],
+    // Per-product feature badges shown on the storefront gallery. The
+    // admin form's Feature badges section round-trips through this.
+    featureBadges: (doc.featureBadges || []).map((b) => ({
+      icon: b?.icon || "",
+      title: b?.title || "",
+      copy: b?.copy || "",
+    })),
     colors: doc.colors || [],
+    // Per-colour hero image overrides (pipe-cleaner products). Kept as
+    // an array so the admin form can rebuild its { color → url } map.
+    colorImages: (doc.colorImages || []).map((c) => ({
+      color: c?.color || "",
+      image: c?.image || "",
+    })),
     variantLabel: doc.variantLabel || "",
     variants: (doc.variants || []).map((v) => ({
       id: v._id ? String(v._id) : undefined,

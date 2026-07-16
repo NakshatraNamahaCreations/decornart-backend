@@ -14,6 +14,13 @@ const SORT_MAP = {
   featured: { isBestseller: -1, createdAt: -1 },
 };
 
+// Escape user input before dropping it into a $regex so a stray `.` or `*`
+// doesn't turn a literal search into an accidental wildcard (or worse —
+// a ReDoS-prone pattern).
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function buildFilter(q) {
   const filter = { status: "active" };
   if (q.category) filter.category = q.category;
@@ -25,7 +32,31 @@ function buildFilter(q) {
     if (q.minPrice != null) filter.price.$gte = q.minPrice;
     if (q.maxPrice != null) filter.price.$lte = q.maxPrice;
   }
-  if (q.q) filter.$text = { $search: q.q };
+  if (q.q) {
+    // Word-by-word contains match across name / description / category /
+    // occasions. Every whitespace-separated term must appear somewhere on
+    // the product, so "butterfly gift" matches products whose fields
+    // contain BOTH "butterfly" AND "gift" (order-independent). This gives
+    // the responsive LIKE behavior shoppers expect from a search box,
+    // rather than MongoDB's stemmed $text OR-across-words match.
+    const terms = q.q
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (terms.length) {
+      filter.$and = terms.map((t) => {
+        const rx = new RegExp(escapeRegex(t), "i");
+        return {
+          $or: [
+            { name: rx },
+            { description: rx },
+            { category: rx },
+            { occasions: rx },
+          ],
+        };
+      });
+    }
+  }
   return filter;
 }
 

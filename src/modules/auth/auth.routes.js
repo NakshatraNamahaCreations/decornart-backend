@@ -11,6 +11,22 @@ router.post("/register", authLimiter, validate({ body: v.register }), ctrl.regis
 router.post("/login", authLimiter, validate({ body: v.login }), ctrl.login);
 router.post("/refresh", validate({ body: v.refresh }), ctrl.refresh);
 router.post("/logout", protect, ctrl.logout);
+
+// Public reset flow. Both endpoints go through authLimiter so an attacker
+// can't brute-force tokens or email-enumerate in bulk. Neither requires an
+// existing session — the token in /reset acts as the auth for that request.
+router.post(
+  "/forgot",
+  authLimiter,
+  validate({ body: v.forgotPassword }),
+  ctrl.forgotPassword
+);
+router.post(
+  "/reset",
+  authLimiter,
+  validate({ body: v.resetPassword }),
+  ctrl.resetPassword
+);
 router.get("/me", protect, ctrl.me);
 router.patch("/me", protect, validate({ body: v.updateProfile }), ctrl.updateProfile);
 router.post(

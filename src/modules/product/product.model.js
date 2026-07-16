@@ -56,9 +56,44 @@ const productSchema = new mongoose.Schema(
       default: [],
     },
 
+    // ── Feature badges shown on the product page under the gallery
+    // (Soft & Fluffy, Easy to Bend, …). Each row is a small
+    // { icon, title, copy } triple. `icon` is a key into the storefront's
+    // shared icon library so the admin can pick from a preset set
+    // rather than paste raw SVG. Empty array falls back to a category
+    // default set on the storefront.
+    featureBadges: {
+      type: [
+        {
+          _id: false,
+          icon: { type: String, trim: true, default: "" },
+          title: { type: String, required: true, trim: true, maxlength: 40 },
+          copy: { type: String, trim: true, default: "", maxlength: 60 },
+        },
+      ],
+      default: [],
+    },
+
     // ── Optional color variants a shopper can pick from on the product
     // page. Empty array means the product has no color selector.
     colors: { type: [String], default: [] },
+
+    // ── Per-colour image overrides. When the shopper picks a colour whose
+    // name matches an entry here, the storefront swaps the hero image to
+    // this URL. Only pipe-cleaner products populate this today; every
+    // other product keeps `colors` without an image override and falls
+    // back to the base gallery. Stored as an array (not a map) so admins
+    // can leave entries partially filled and the Mongoose ODM stays happy.
+    colorImages: {
+      type: [
+        {
+          _id: false,
+          color: { type: String, required: true, trim: true, maxlength: 40 },
+          image: { type: String, required: true, trim: true },
+        },
+      ],
+      default: [],
+    },
 
     // ── Priced variants (e.g. "6mm" / "8mm" pipe cleaners, "50 g" / "100 g"
     // yarn). When present, the shopper picks one at add-to-cart time and
