@@ -9,6 +9,22 @@ const SLOTS = [
   "homepage-mid", // secondary homepage promo strip
   "announcement-bar", // top-of-page announcement text (image optional)
   "category-banner", // per-category hero (categorySlug required)
+  // Per-page hero images. Each of these is a single-image slot; the
+  // storefront falls back to a bundled asset when the admin hasn't
+  // uploaded one yet, so publishing is optional.
+  "about-hero",
+  "handmade-hero",
+  "shop-hero",
+  "offers-hero",
+  "craft-essentials-hero",
+  "inspiration-gallery-hero",
+  "checkout-hero",
+  "thank-you-hero",
+  // Homepage card lists — the storefront reads *all* active rows in each
+  // of these slots and renders one card per row (ordered by `position`).
+  // Admins can add / remove cards freely.
+  "special-moments",
+  "promo-banner",
 ];
 
 const bannerSchema = new mongoose.Schema(
