@@ -113,6 +113,16 @@ const productSchema = new mongoose.Schema(
       },
     ],
 
+    // ── Optional product video. Rendered by the "View Video" button and
+    // the DIY tutorial card on the storefront's Description tab. `url` may
+    // be a direct MP4 (Cloudinary or elsewhere) or a YouTube/Vimeo link.
+    // Nested-path definition (same pattern as `specs`) — reliable with
+    // `$set` on Mongoose 8.
+    video: {
+      url: { type: String, trim: true, default: "" },
+      title: { type: String, trim: true, default: "", maxlength: 80 },
+    },
+
     // ── Legacy use-case tags (storefront filter still reads these;
     // admin no longer writes them but old docs may still have them).
     occasion: { type: String, trim: true },

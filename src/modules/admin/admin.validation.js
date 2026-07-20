@@ -94,6 +94,16 @@ const productBody = z.object({
       })
     )
     .optional(),
+  // Optional product video. `url` accepts any http(s) link (Cloudinary
+  // MP4, YouTube, Vimeo, …); storefront picks the right renderer.
+  // Kept loose intentionally — the storefront handles arbitrary strings
+  // and we don't want a subtle Zod `.url()` mismatch to strip the field.
+  video: z
+    .object({
+      url: z.string().trim().max(600).optional(),
+      title: z.string().trim().max(80).optional(),
+    })
+    .optional(),
   // Optional priced variants — see variantSchema above.
   variants: z.array(variantSchema).optional(),
   // Section label rendered above the variant chips on the storefront.

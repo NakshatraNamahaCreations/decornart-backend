@@ -14,6 +14,13 @@ const shippingV = require("../shipping/shipping.validation");
 const validate = require("../../middleware/validate");
 const { protect, restrictTo } = require("../../middleware/auth");
 
+// TEMP: raw log so we can see every admin request as it enters this router.
+router.use((req, _res, next) => {
+  // eslint-disable-next-line no-console
+  console.log(`[admin.router] ${req.method} ${req.originalUrl}  body.video=${JSON.stringify(req.body?.video)}`);
+  next();
+});
+
 // Every admin route is gated: must be authenticated AND have role=admin.
 router.use(protect, restrictTo("admin"));
 
