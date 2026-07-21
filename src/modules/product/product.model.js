@@ -78,6 +78,21 @@ const productSchema = new mongoose.Schema(
     // page. Empty array means the product has no color selector.
     colors: { type: [String], default: [] },
 
+    // ── Optional hex overrides per color name. Custom (non-preset)
+    // colors added in the admin need an explicit swatch hex; the static
+    // COLOR_HEX map on the storefront covers presets only. Storefront
+    // reads this first, then falls back to the static map, then grey.
+    colorSwatches: {
+      type: [
+        {
+          _id: false,
+          color: { type: String, required: true, trim: true, maxlength: 40 },
+          hex: { type: String, required: true, trim: true, maxlength: 20 },
+        },
+      ],
+      default: [],
+    },
+
     // ── Per-colour image overrides. When the shopper picks a colour whose
     // name matches an entry here, the storefront swaps the hero image to
     // this URL. Only pipe-cleaner products populate this today; every

@@ -94,6 +94,16 @@ const productBody = z.object({
       })
     )
     .optional(),
+  // Optional hex overrides for custom (non-preset) colors so the
+  // storefront can render a real swatch instead of the grey fallback.
+  colorSwatches: z
+    .array(
+      z.object({
+        color: z.string().trim().min(1).max(40),
+        hex: z.string().trim().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Invalid hex"),
+      })
+    )
+    .optional(),
   // Optional product video. `url` accepts any http(s) link (Cloudinary
   // MP4, YouTube, Vimeo, …); storefront picks the right renderer.
   // Kept loose intentionally — the storefront handles arbitrary strings

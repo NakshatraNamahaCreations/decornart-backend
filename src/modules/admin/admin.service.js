@@ -874,6 +874,13 @@ function serialize(doc) {
       color: c?.color || "",
       image: c?.image || "",
     })),
+    // Per-colour hex overrides for custom colours the admin picked. The
+    // storefront reads this first when rendering a swatch, then falls
+    // back to its static COLOR_HEX map, then to a neutral grey.
+    colorSwatches: (doc.colorSwatches || []).map((c) => ({
+      color: c?.color || "",
+      hex: c?.hex || "",
+    })),
     variantLabel: doc.variantLabel || "",
     variants: (doc.variants || []).map((v) => ({
       id: v._id ? String(v._id) : undefined,
