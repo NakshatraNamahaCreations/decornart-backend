@@ -70,14 +70,10 @@ async function createProduct(payload) {
   const exists = await Product.exists({ slug: payload.slug });
   if (exists) throw ApiError.conflict("A product with that slug already exists");
   await ensureCategoryExists(payload.category);
-  // eslint-disable-next-line no-console
-  console.log("[createProduct] incoming video:", JSON.stringify(payload.video));
   const doc = await Product.create({
     ...payload,
     status: payload.status || "active",
   });
-  // eslint-disable-next-line no-console
-  console.log("[createProduct] persisted video:", JSON.stringify(doc.video));
   invalidateProductCaches();
   invalidateCategoryCaches();
   return serialize(doc.toObject());
@@ -89,9 +85,6 @@ async function updateProduct(id, payload) {
     if (clash) throw ApiError.conflict("A product with that slug already exists");
   }
   if (payload.category) await ensureCategoryExists(payload.category);
-
-  // eslint-disable-next-line no-console
-  console.log("[updateProduct] incoming video:", JSON.stringify(payload.video));
 
   // Split video out and flatten to dot-notation. `$set: { video: {...} }`
   // was silently dropping the parent object due to a Mongoose nested-path
@@ -106,19 +99,14 @@ async function updateProduct(id, payload) {
   // Direct updateOne — bypasses findByIdAndUpdate's cast quirks. We then
   // read back a fresh doc to serialize (so the response reflects DB truth,
   // including defaults applied on other fields).
-  const result = await Product.updateOne(
+  await Product.updateOne(
     { _id: id },
     { $set: setOps },
     { runValidators: false }
   );
-  // eslint-disable-next-line no-console
-  console.log("[updateProduct] updateOne result:", JSON.stringify(result));
 
   const doc = await Product.findById(id).lean();
   if (!doc) throw ApiError.notFound("Product not found");
-
-  // eslint-disable-next-line no-console
-  console.log("[updateProduct] persisted video (after read):", JSON.stringify(doc.video));
 
   invalidateProductCaches();
   invalidateCategoryCaches();

@@ -76,6 +76,7 @@ const modules = [
   ["/reviews", "./modules/review/review.routes"],
   ["/newsletter", "./modules/newsletter/newsletter.routes"],
   ["/contact", "./modules/contact/contact.routes"],
+  ["/diy-videos", "./modules/diyVideo/diyVideo.routes"],
   ["/admin", "./modules/admin/admin.routes"],
 ];
 

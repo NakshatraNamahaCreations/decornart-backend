@@ -19,8 +19,6 @@ const createProduct = asyncHandler(async (req, res) => {
 });
 
 const updateProduct = asyncHandler(async (req, res) => {
-  // eslint-disable-next-line no-console
-  console.log("[ctrl.updateProduct] body.video after validation:", JSON.stringify(req.body.video));
   return ok(res, await service.updateProduct(req.params.id, req.body));
 });
 

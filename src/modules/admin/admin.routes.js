@@ -7,19 +7,14 @@ const couponCtrl = require("../coupon/coupon.controller");
 const couponV = require("../coupon/coupon.validation");
 const bannerCtrl = require("../banner/banner.controller");
 const bannerV = require("../banner/banner.validation");
+const diyVideoCtrl = require("../diyVideo/diyVideo.controller");
+const diyVideoV = require("../diyVideo/diyVideo.validation");
 const settingsCtrl = require("../settings/settings.controller");
 const settingsV = require("../settings/settings.validation");
 const shippingCtrl = require("../shipping/shipping.controller");
 const shippingV = require("../shipping/shipping.validation");
 const validate = require("../../middleware/validate");
 const { protect, restrictTo } = require("../../middleware/auth");
-
-// TEMP: raw log so we can see every admin request as it enters this router.
-router.use((req, _res, next) => {
-  // eslint-disable-next-line no-console
-  console.log(`[admin.router] ${req.method} ${req.originalUrl}  body.video=${JSON.stringify(req.body?.video)}`);
-  next();
-});
 
 // Every admin route is gated: must be authenticated AND have role=admin.
 router.use(protect, restrictTo("admin"));
@@ -133,5 +128,33 @@ router.patch(
   bannerCtrl.updateOne
 );
 router.delete("/banners/:id", validate({ params: bannerV.idParam }), bannerCtrl.deleteOne);
+
+// ── DIY Videos ────────────────────────────────────────────────────────
+router.get("/diy-videos", diyVideoCtrl.listAdmin);
+router.post(
+  "/diy-videos",
+  validate({ body: diyVideoV.diyVideoBody }),
+  diyVideoCtrl.createOne
+);
+router.post(
+  "/diy-videos/reorder",
+  validate({ body: diyVideoV.reorderBody }),
+  diyVideoCtrl.reorder
+);
+router.get(
+  "/diy-videos/:id",
+  validate({ params: diyVideoV.idParam }),
+  diyVideoCtrl.getOne
+);
+router.patch(
+  "/diy-videos/:id",
+  validate({ params: diyVideoV.idParam, body: diyVideoV.diyVideoUpdate }),
+  diyVideoCtrl.updateOne
+);
+router.delete(
+  "/diy-videos/:id",
+  validate({ params: diyVideoV.idParam }),
+  diyVideoCtrl.deleteOne
+);
 
 module.exports = router;
