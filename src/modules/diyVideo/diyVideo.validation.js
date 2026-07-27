@@ -5,7 +5,7 @@ const { z } = require("zod");
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id");
 
 const diyVideoBody = z.object({
-  title: z.string().trim().min(1).max(120),
+  title: z.string().trim().max(120).optional().or(z.literal("")),
   subtitle: z.string().trim().max(160).optional().or(z.literal("")),
   thumbnail: z.string().trim().url().max(600),
   videoUrl: z.string().trim().max(600),

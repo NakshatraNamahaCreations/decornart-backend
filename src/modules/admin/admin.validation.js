@@ -42,6 +42,16 @@ const faqSchema = z.object({
   a: z.string().trim().min(1).max(2000),
 });
 
+const reviewSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  rating: z.coerce.number().int().min(1).max(5),
+  date: z.string().trim().max(40).optional().or(z.literal("")),
+  title: z.string().trim().max(160).optional().or(z.literal("")),
+  body: z.string().trim().min(1).max(2000),
+  verified: z.boolean().optional(),
+  helpful: z.coerce.number().int().min(0).optional(),
+});
+
 // Priced variants (e.g. "6mm" / "8mm"). Only `name` and `price` are required.
 const variantSchema = z.object({
   name: z.string().trim().min(1).max(60),
@@ -67,6 +77,7 @@ const productBody = z.object({
   usage: z.array(z.string().trim().max(300)).optional(),
   specs: specsSchema,
   faqs: z.array(faqSchema).optional(),
+  reviews: z.array(reviewSchema).optional(),
   // Optional color variants (e.g., ["Red", "Blue"]). Empty array means
   // no color selector on the storefront.
   colors: z.array(z.string().trim().min(1).max(40)).optional(),

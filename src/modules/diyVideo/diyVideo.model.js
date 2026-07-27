@@ -10,7 +10,7 @@ const mongoose = require("mongoose");
  */
 const diyVideoSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true, trim: true, maxlength: 120 },
+    title: { type: String, trim: true, default: "", maxlength: 120 },
     subtitle: { type: String, trim: true, default: "", maxlength: 160 },
     // Thumbnail image shown on the card (Cloudinary URL).
     thumbnail: { type: String, required: true, trim: true },

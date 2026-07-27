@@ -43,6 +43,25 @@ const productSchema = new mongoose.Schema(
       length: { type: String, trim: true },
     },
 
+    // ── Curated customer reviews shown on the product page's Reviews
+    // tab. Admin-managed today — the storefront's Reviews tab uses this
+    // list when present, otherwise falls back to a demo set.
+    reviews: {
+      type: [
+        {
+          _id: false,
+          name: { type: String, required: true, trim: true, maxlength: 80 },
+          rating: { type: Number, required: true, min: 1, max: 5 },
+          date: { type: String, trim: true, default: "", maxlength: 40 },
+          title: { type: String, trim: true, default: "", maxlength: 160 },
+          body: { type: String, required: true, trim: true, maxlength: 2000 },
+          verified: { type: Boolean, default: false },
+          helpful: { type: Number, default: 0, min: 0 },
+        },
+      ],
+      default: [],
+    },
+
     // ── FAQs shown on the product page's FAQ tab. Optional; empty array
     // means the tab renders the "no questions yet" state on the storefront.
     faqs: {

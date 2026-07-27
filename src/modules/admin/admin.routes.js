@@ -9,6 +9,8 @@ const bannerCtrl = require("../banner/banner.controller");
 const bannerV = require("../banner/banner.validation");
 const diyVideoCtrl = require("../diyVideo/diyVideo.controller");
 const diyVideoV = require("../diyVideo/diyVideo.validation");
+const instagramPostCtrl = require("../instagramPost/instagramPost.controller");
+const instagramPostV = require("../instagramPost/instagramPost.validation");
 const settingsCtrl = require("../settings/settings.controller");
 const settingsV = require("../settings/settings.validation");
 const shippingCtrl = require("../shipping/shipping.controller");
@@ -69,6 +71,11 @@ router.patch(
   "/customers/:id/status",
   validate({ params: v.idParam, body: v.customerBlockBody }),
   ctrl.setCustomerBlocked
+);
+router.delete(
+  "/customers/:id",
+  validate({ params: v.idParam }),
+  ctrl.deleteCustomer
 );
 
 // ── Categories ─────────────────────────────────────────────────────────
@@ -155,6 +162,37 @@ router.delete(
   "/diy-videos/:id",
   validate({ params: diyVideoV.idParam }),
   diyVideoCtrl.deleteOne
+);
+
+// ── Instagram Posts ───────────────────────────────────────────────────
+router.get("/instagram-posts", instagramPostCtrl.listAdmin);
+router.post(
+  "/instagram-posts",
+  validate({ body: instagramPostV.instagramPostBody }),
+  instagramPostCtrl.createOne
+);
+router.post(
+  "/instagram-posts/reorder",
+  validate({ body: instagramPostV.reorderBody }),
+  instagramPostCtrl.reorder
+);
+router.get(
+  "/instagram-posts/:id",
+  validate({ params: instagramPostV.idParam }),
+  instagramPostCtrl.getOne
+);
+router.patch(
+  "/instagram-posts/:id",
+  validate({
+    params: instagramPostV.idParam,
+    body: instagramPostV.instagramPostUpdate,
+  }),
+  instagramPostCtrl.updateOne
+);
+router.delete(
+  "/instagram-posts/:id",
+  validate({ params: instagramPostV.idParam }),
+  instagramPostCtrl.deleteOne
 );
 
 module.exports = router;

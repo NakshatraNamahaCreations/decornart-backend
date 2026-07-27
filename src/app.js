@@ -77,6 +77,7 @@ const modules = [
   ["/newsletter", "./modules/newsletter/newsletter.routes"],
   ["/contact", "./modules/contact/contact.routes"],
   ["/diy-videos", "./modules/diyVideo/diyVideo.routes"],
+  ["/instagram-posts", "./modules/instagramPost/instagramPost.routes"],
   ["/admin", "./modules/admin/admin.routes"],
 ];
 

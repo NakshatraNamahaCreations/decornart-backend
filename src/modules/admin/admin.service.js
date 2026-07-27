@@ -774,6 +774,20 @@ async function setCustomerBlocked(id, blocked) {
   };
 }
 
+// Hard-deletes the User doc. Orders keep their `user` ObjectId reference
+// (which will resolve to null on populate) so historical revenue/order
+// records stay intact for reporting. Admin accounts are guarded so this
+// endpoint can never lock the console out.
+async function deleteCustomer(id) {
+  const user = await User.findById(id).lean();
+  if (!user) throw ApiError.notFound("Customer not found");
+  if (user.role === "admin") {
+    throw ApiError.badRequest("Admin accounts cannot be deleted from here.");
+  }
+  await User.deleteOne({ _id: id });
+  return { id: String(user._id) };
+}
+
 function serializeOrderCard(o) {
   return {
     id: String(o._id),
@@ -848,6 +862,15 @@ function serialize(doc) {
     usage: doc.usage || [],
     specs: doc.specs || {},
     faqs: doc.faqs || [],
+    reviews: (doc.reviews || []).map((r) => ({
+      name: r?.name || "",
+      rating: r?.rating ?? 5,
+      date: r?.date || "",
+      title: r?.title || "",
+      body: r?.body || "",
+      verified: !!r?.verified,
+      helpful: r?.helpful ?? 0,
+    })),
     // Per-product feature badges shown on the storefront gallery. The
     // admin form's Feature badges section round-trips through this.
     featureBadges: (doc.featureBadges || []).map((b) => ({
@@ -913,6 +936,7 @@ module.exports = {
   listCustomers,
   getCustomer,
   setCustomerBlocked,
+  deleteCustomer,
   listCategoriesAdmin,
   getCategoryAdmin,
   createCategory,
