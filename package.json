@@ -8,7 +8,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed": "node src/seed/seed.js",
-    "seed:fresh": "node src/seed/seed.js --fresh"
+    "seed:fresh": "node src/seed/seed.js --fresh",
+    "rename:crochet-colors": "node src/seed/rename-crochet-colors.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
