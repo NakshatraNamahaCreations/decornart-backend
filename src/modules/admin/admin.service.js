@@ -774,6 +774,33 @@ async function setCustomerBlocked(id, blocked) {
   };
 }
 
+// Targeted stock update — bypasses the full-product PATCH so admins can
+// tweak numbers from the inventory page without round-tripping the whole
+// payload. Passing `variantId` narrows the update to that variant via
+// the positional operator; otherwise the parent product's `stock` moves.
+async function updateInventory(id, { stock, variantId }) {
+  if (variantId) {
+    const result = await Product.updateOne(
+      { _id: id, "variants._id": variantId },
+      { $set: { "variants.$.stock": stock } }
+    );
+    if (result.matchedCount === 0) {
+      throw ApiError.notFound("Variant not found on this product");
+    }
+  } else {
+    const result = await Product.updateOne(
+      { _id: id },
+      { $set: { stock } }
+    );
+    if (result.matchedCount === 0) {
+      throw ApiError.notFound("Product not found");
+    }
+  }
+  invalidateProductCaches();
+  const doc = await Product.findById(id).lean();
+  return serialize(doc);
+}
+
 // Hard-deletes the User doc. Orders keep their `user` ObjectId reference
 // (which will resolve to null on populate) so historical revenue/order
 // records stay intact for reporting. Admin accounts are guarded so this
@@ -937,6 +964,7 @@ module.exports = {
   getCustomer,
   setCustomerBlocked,
   deleteCustomer,
+  updateInventory,
   listCategoriesAdmin,
   getCategoryAdmin,
   createCategory,

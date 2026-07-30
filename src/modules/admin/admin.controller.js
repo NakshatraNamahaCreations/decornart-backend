@@ -82,6 +82,10 @@ const deleteCustomer = asyncHandler(async (req, res) => {
   return ok(res, await service.deleteCustomer(req.params.id));
 });
 
+const updateInventory = asyncHandler(async (req, res) => {
+  return ok(res, await service.updateInventory(req.params.id, req.body));
+});
+
 // ── Categories ─────────────────────────────────────────────────────────
 const listCategoriesAdmin = asyncHandler(async (_req, res) => {
   return ok(res, await service.listCategoriesAdmin());
@@ -157,6 +161,7 @@ module.exports = {
   getCustomer,
   setCustomerBlocked,
   deleteCustomer,
+  updateInventory,
   listCategoriesAdmin,
   getCategoryAdmin,
   createCategory,

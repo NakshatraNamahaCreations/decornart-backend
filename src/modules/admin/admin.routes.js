@@ -78,6 +78,13 @@ router.delete(
   ctrl.deleteCustomer
 );
 
+// ── Inventory ─────────────────────────────────────────────────────────
+router.patch(
+  "/inventory/:id",
+  validate({ params: v.idParam, body: v.inventoryUpdate }),
+  ctrl.updateInventory
+);
+
 // ── Categories ─────────────────────────────────────────────────────────
 router.get("/categories", ctrl.listCategoriesAdmin);
 router.post("/categories", validate({ body: v.categoryBody }), ctrl.createCategory);

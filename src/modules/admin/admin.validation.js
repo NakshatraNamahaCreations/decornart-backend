@@ -224,6 +224,13 @@ const categoryReorderBody = z.object({
   ids: z.array(z.string().regex(/^[a-f\d]{24}$/i)).min(1),
 });
 
+// Inventory patch — targeted stock update. Omitting `variantId` updates
+// the parent product's stock; passing one updates that specific variant.
+const inventoryUpdate = z.object({
+  stock: z.coerce.number().int().min(0).max(1000000),
+  variantId: objectId.optional(),
+});
+
 module.exports = {
   productBody,
   productUpdate,
@@ -238,5 +245,6 @@ module.exports = {
   categoryBody,
   categoryUpdate,
   categoryReorderBody,
+  inventoryUpdate,
   CATEGORIES,
 };
