@@ -93,6 +93,18 @@ const productSchema = new mongoose.Schema(
       default: [],
     },
 
+    // ── Materials the product is made from (facet filter on the
+    // storefront sidebar). Multi-value — a product can be, say,
+    // ["paper", "jute"]. Stored lowercase; admin picks from a preset
+    // list ("paper", "wood", "cotton", "glass", "jute").
+    materials: { type: [String], default: [], index: true },
+
+    // ── Brand style vibes this product fits (multi-value facet).
+    // Admin picks any of "luxury", "minimalist", "modern", "classic",
+    // "rustic", "romantic", "artisan" — mirrored on the storefront
+    // sidebar as multi-select checkboxes.
+    brandStyles: { type: [String], default: [], index: true },
+
     // ── Optional color variants a shopper can pick from on the product
     // page. Empty array means the product has no color selector.
     colors: { type: [String], default: [] },

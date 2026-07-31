@@ -44,6 +44,15 @@ async function listProducts(query) {
     { name: { $regex: query.q, $options: "i" } },
     { slug: { $regex: query.q, $options: "i" } },
   ];
+  // stockStatus filter — narrows the result set to in-stock or out-of-
+  // stock products. Matches the parent product's `stock` field; variant-
+  // level stock is checked separately on the storefront product page.
+  // Both filters are intentionally permissive so neither is empty when
+  // legacy docs carry stock as null / missing.
+  // "in-stock"  = anything except an explicit 0 (positive OR missing/null)
+  // "out-of-stock" = an explicit 0 OR missing/null
+  if (query.stockStatus === "in") filter.stock = { $ne: 0 };
+  else if (query.stockStatus === "out") filter.stock = { $in: [0, null] };
 
   const [items, total] = await Promise.all([
     Product.find(filter)
@@ -905,6 +914,8 @@ function serialize(doc) {
       title: b?.title || "",
       copy: b?.copy || "",
     })),
+    materials: doc.materials || [],
+    brandStyles: doc.brandStyles || [],
     colors: doc.colors || [],
     // Per-colour hero image overrides (pipe-cleaner products). Kept as
     // an array so the admin form can rebuild its { color → url } map.

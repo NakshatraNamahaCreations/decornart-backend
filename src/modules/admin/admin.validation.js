@@ -78,6 +78,12 @@ const productBody = z.object({
   specs: specsSchema,
   faqs: z.array(faqSchema).optional(),
   reviews: z.array(reviewSchema).optional(),
+  // Materials the product is made from (paper, wood, cotton, glass,
+  // jute, ...). Multi-value facet filter on the storefront sidebar.
+  materials: z.array(z.string().trim().min(1).max(40)).optional(),
+  // Brand style vibes (luxury, minimalist, modern, classic, rustic,
+  // romantic, artisan). Multi-value facet filter on the sidebar.
+  brandStyles: z.array(z.string().trim().min(1).max(40)).optional(),
   // Optional color variants (e.g., ["Red", "Blue"]). Empty array means
   // no color selector on the storefront.
   colors: z.array(z.string().trim().min(1).max(40)).optional(),
@@ -151,6 +157,10 @@ const listQuery = z.object({
   q: z.string().trim().max(80).optional(),
   status: z.enum(["active", "draft", "archived", "all"]).optional(),
   category: categoryEnum.optional(),
+  // Stock availability filter driven from the admin panel's Inventory /
+  // Products dropdown. "in" → stock > 0, "out" → stock === 0, "all"
+  // (or omitted) → no filter.
+  stockStatus: z.enum(["all", "in", "out"]).optional(),
 });
 
 // ── Orders ──────────────────────────────────────────────────────────────

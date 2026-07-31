@@ -24,9 +24,45 @@ function escapeRegex(str) {
 function buildFilter(q) {
   const filter = { status: "active" };
   if (q.category) filter.category = q.category;
-  if (q.occasion) filter.occasions = q.occasion;
+  // Occasion facet — comma-separated list from the storefront sidebar.
+  // "birthday,anniversary" → matches any product with either occasion.
+  if (q.occasion) {
+    const list = String(q.occasion)
+      .split(",")
+      .map((o) => o.trim().toLowerCase())
+      .filter(Boolean);
+    if (list.length === 1) filter.occasions = list[0];
+    else if (list.length > 1) filter.occasions = { $in: list };
+  }
   if (q.bestseller) filter.isBestseller = true;
   if (q.isNew) filter.isNew = true;
+  // Both filters are intentionally permissive so neither is empty when
+  // legacy docs carry stock as null / missing (not an explicit number).
+  // "in-stock"  = anything except an explicit 0 (positive OR missing/null)
+  // "out-of-stock" = an explicit 0 OR missing/null (treated as "unknown/unset")
+  // Products with unset stock therefore appear in both filters until an
+  // admin gives them a real number — the trade-off for always showing
+  // something in both buckets.
+  if (q.stockStatus === "in") filter.stock = { $ne: 0 };
+  else if (q.stockStatus === "out") filter.stock = { $in: [0, null] };
+  // Material facet — comma-separated list from the storefront sidebar
+  // multi-select checkboxes. A product matches if ANY of its materials
+  // is in the requested list ("paper" OR "wood" semantics).
+  if (q.material) {
+    const list = String(q.material)
+      .split(",")
+      .map((m) => m.trim().toLowerCase())
+      .filter(Boolean);
+    if (list.length) filter.materials = { $in: list };
+  }
+  // Brand style facet — same OR semantics as material.
+  if (q.brandStyle) {
+    const list = String(q.brandStyle)
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    if (list.length) filter.brandStyles = { $in: list };
+  }
   if (q.minPrice != null || q.maxPrice != null) {
     filter.price = {};
     if (q.minPrice != null) filter.price.$gte = q.minPrice;
@@ -66,7 +102,10 @@ function cacheKey(prefix, obj) {
 }
 
 async function list(query) {
-  const { page, limit, skip } = getPagination(query);
+  // maxLimit bumped to 1000 so the storefront's sidebar-count fetch can
+  // pull the full match set in one call. Regular page-size requests are
+  // still 30–60; this only kicks in for the count-only side channel.
+  const { page, limit, skip } = getPagination(query, { maxLimit: 1000 });
   const filter = buildFilter(query);
   const sort = SORT_MAP[query.sort] || SORT_MAP.featured;
   const key = cacheKey("product:list", { filter, sort, page, limit });
@@ -80,7 +119,7 @@ async function list(query) {
         .sort(sort)
         .skip(skip)
         .limit(limit)
-        .select("slug name price occasion occasions category images isNew isBestseller rating colors")
+        .select("slug name price occasion occasions category images isNew isBestseller rating colors materials brandStyles stock")
         .lean(),
       Product.countDocuments(filter),
     ]);
@@ -100,6 +139,9 @@ async function list(query) {
       isBestseller: p.isBestseller,
       rating: p.rating,
       colors: p.colors || [],
+      materials: p.materials || [],
+      brandStyles: p.brandStyles || [],
+      stock: p.stock,
     }));
     return { items: cards, meta: buildMeta({ page, limit, total }) };
   });

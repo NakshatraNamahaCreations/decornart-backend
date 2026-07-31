@@ -20,6 +20,10 @@ const SLOTS = [
   "inspiration-gallery-hero",
   "checkout-hero",
   "thank-you-hero",
+  "collections-hero",
+  "contact-hero",
+  "categories-hero",
+  "gallery-hero",
   // Homepage card lists — the storefront reads *all* active rows in each
   // of these slots and renders one card per row (ordered by `position`).
   // Admins can add / remove cards freely.
