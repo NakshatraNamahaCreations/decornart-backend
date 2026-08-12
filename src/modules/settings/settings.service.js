@@ -54,6 +54,8 @@ async function getPublic() {
       checkout: {
         freeShippingThreshold: s.checkout.freeShippingThreshold,
         defaultShippingCharge: s.checkout.defaultShippingCharge,
+        expressShippingCharge: s.checkout.expressShippingCharge ?? 150,
+        sameDayShippingCharge: s.checkout.sameDayShippingCharge ?? 250,
         codEnabled: s.checkout.codEnabled && s.payment.codEnabled,
       },
       socials: s.socials,

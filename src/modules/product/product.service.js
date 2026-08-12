@@ -119,7 +119,7 @@ async function list(query) {
         .sort(sort)
         .skip(skip)
         .limit(limit)
-        .select("slug name price occasion occasions category images isNew isBestseller rating colors materials brandStyles stock")
+        .select("slug name price compareAt occasion occasions category images isNew isBestseller rating ratingCount colors materials brandStyles stock")
         .lean(),
       Product.countDocuments(filter),
     ]);
@@ -128,7 +128,9 @@ async function list(query) {
       slug: p.slug,
       name: p.name,
       price: p.price,
+      compareAt: p.compareAt || null,
       occasion: p.occasion,
+      ratingCount: p.ratingCount || 0,
       occasions: p.occasions,
       category: p.category,
       image: (p.images && p.images[0]) || null,

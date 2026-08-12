@@ -30,10 +30,15 @@ const settingsSchema = new mongoose.Schema(
     },
 
     // Checkout defaults — used when no pincode-specific ShippingRule matches.
-    // Actual computation happens in shipping.service.quote().
+    // Actual computation happens in shipping.service.quote(). The two extra
+    // charges below (express / same-day) are surfaced to the storefront so
+    // the checkout page can render admin-configurable delivery options
+    // without hardcoding the amount.
     checkout: {
       defaultShippingCharge: { type: Number, default: 99, min: 0 },
       freeShippingThreshold: { type: Number, default: 999, min: 0 },
+      expressShippingCharge: { type: Number, default: 150, min: 0 },
+      sameDayShippingCharge: { type: Number, default: 250, min: 0 },
       codEnabled: { type: Boolean, default: true },
     },
 

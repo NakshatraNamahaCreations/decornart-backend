@@ -32,6 +32,8 @@ const checkoutShape = z
   .object({
     defaultShippingCharge: z.coerce.number().min(0),
     freeShippingThreshold: z.coerce.number().min(0),
+    expressShippingCharge: z.coerce.number().min(0),
+    sameDayShippingCharge: z.coerce.number().min(0),
     codEnabled: z.boolean(),
   })
   .partial();

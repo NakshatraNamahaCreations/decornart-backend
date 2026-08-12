@@ -75,12 +75,33 @@ async function getProduct(id) {
   return serialize(doc);
 }
 
+// Reduce a reviews array into { rating, ratingCount } — used by both
+// create and update flows so the storefront's product card can show an
+// average star rating without having to load the full review list.
+function summarizeReviews(reviews) {
+  const list = Array.isArray(reviews) ? reviews : [];
+  const nums = list
+    .map((r) => Number(r?.rating))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
+  return {
+    // Round to one decimal so the API returns "4.5" not "4.5000000001".
+    rating: Math.round(avg * 10) / 10,
+    ratingCount: list.length,
+  };
+}
+
 async function createProduct(payload) {
   const exists = await Product.exists({ slug: payload.slug });
   if (exists) throw ApiError.conflict("A product with that slug already exists");
   await ensureCategoryExists(payload.category);
+  const summary = summarizeReviews(payload.reviews);
   const doc = await Product.create({
     ...payload,
+    // Derive aggregate rating from admin-authored reviews so the storefront
+    // card renders stars without loading the full review list.
+    rating: summary.rating,
+    ratingCount: summary.ratingCount,
     status: payload.status || "active",
   });
   invalidateProductCaches();
@@ -95,31 +116,98 @@ async function updateProduct(id, payload) {
   }
   if (payload.category) await ensureCategoryExists(payload.category);
 
-  // Split video out and flatten to dot-notation. `$set: { video: {...} }`
-  // was silently dropping the parent object due to a Mongoose nested-path
-  // quirk; setting the leaves individually writes reliably to Mongo.
-  const { video, ...rest } = payload;
-  const setOps = { ...rest };
-  if (video && typeof video === "object") {
-    setOps["video.url"] = typeof video.url === "string" ? video.url : "";
-    setOps["video.title"] = typeof video.title === "string" ? video.title : "";
-  }
-
-  // Direct updateOne — bypasses findByIdAndUpdate's cast quirks. We then
-  // read back a fresh doc to serialize (so the response reflects DB truth,
-  // including defaults applied on other fields).
-  await Product.updateOne(
-    { _id: id },
-    { $set: setOps },
-    { runValidators: false }
+  // eslint-disable-next-line no-console
+  console.log(
+    "[admin.updateProduct] payload.reviews:",
+    Array.isArray(payload.reviews) ? payload.reviews.length : "n/a",
+    payload.reviews
   );
 
-  const doc = await Product.findById(id).lean();
+  // Fetch the doc so we can drive updates through save() semantics — this
+  // is the only pattern Mongoose guarantees for subdocument arrays
+  // (reviews, faqs, featureBadges, colorImages, colorSwatches, variants).
+  // `updateOne + $set` was dropping subdoc arrays silently in some cases
+  // (especially arrays declared with `_id: false`).
+  const doc = await Product.findById(id);
   if (!doc) throw ApiError.notFound("Product not found");
+
+  // Subdocument arrays — replace via direct array assignment (not `.set`)
+  // and mark modified so Mongoose emits the update op. `.set()` on a
+  // DocumentArray path in Mongoose 8 can silently re-use the previous
+  // cached array when the shape matches, which is exactly the failure
+  // mode we've been chasing for reviews.
+  const SUBDOC_ARRAYS = [
+    "reviews",
+    "faqs",
+    "featureBadges",
+    "colorImages",
+    "colorSwatches",
+    "variants",
+  ];
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (key === "video" && value && typeof value === "object") {
+      // Nested-path object (not a subdoc array). Assign leaves so Mongoose
+      // doesn't drop the parent — same quirk as before.
+      doc.video = {
+        url: typeof value.url === "string" ? value.url : "",
+        title: typeof value.title === "string" ? value.title : "",
+      };
+      doc.markModified("video");
+      continue;
+    }
+    if (SUBDOC_ARRAYS.includes(key)) {
+      // Direct assignment on the DocumentArray path — Mongoose casts each
+      // element via the subdoc schema when we reassign the whole array.
+      doc[key] = Array.isArray(value) ? value : [];
+      doc.markModified(key);
+      continue;
+    }
+    doc.set(key, value);
+  }
+
+  // Skip Mongoose validators on save — Zod has already validated the
+  // payload, and we don't want a stale legacy field on the doc to block
+  // an otherwise-valid admin update.
+  await doc.save({ validateBeforeSave: false });
+
+  // Defensive follow-up: force-write reviews via updateOne with strict:false
+  // so the field is guaranteed to hit Mongo even if Mongoose subdoc casting
+  // silently dropped the array during save(). Also refresh the aggregate
+  // rating/ratingCount so the shop card can render stars. No-op when
+  // reviews wasn't in the payload at all.
+  if (Array.isArray(payload.reviews)) {
+    const summary = summarizeReviews(payload.reviews);
+    await Product.collection.updateOne(
+      { _id: doc._id },
+      {
+        $set: {
+          reviews: payload.reviews,
+          rating: summary.rating,
+          ratingCount: summary.ratingCount,
+        },
+      }
+    );
+    // eslint-disable-next-line no-console
+    console.log(
+      "[admin.updateProduct] force-wrote reviews via raw collection:",
+      payload.reviews.length,
+      "avg:",
+      summary.rating
+    );
+  }
 
   invalidateProductCaches();
   invalidateCategoryCaches();
-  return serialize(doc);
+  // Re-read as a plain object so `serialize` gets consistent field shape
+  // (e.g. subdoc arrays as plain arrays, not DocumentArray instances).
+  const fresh = await Product.findById(id).lean();
+  // eslint-disable-next-line no-console
+  console.log(
+    "[admin.updateProduct] fresh doc.reviews:",
+    Array.isArray(fresh?.reviews) ? fresh.reviews.length : "n/a"
+  );
+  return serialize(fresh);
 }
 
 async function deleteProduct(id) {
@@ -889,6 +977,7 @@ function serialize(doc) {
     name: doc.name,
     description: doc.description || "",
     price: doc.price,
+    compareAt: doc.compareAt || null,
     occasion: doc.occasion || "",
     occasions: doc.occasions || [],
     category: doc.category,

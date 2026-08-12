@@ -71,6 +71,9 @@ const productBody = z.object({
   name: z.string().trim().min(2).max(160),
   description: z.string().trim().max(4000).optional(),
   price: z.coerce.number().min(0),
+  // Original / MRP price. Optional. Storefront draws a strikethrough when
+  // set and greater than `price`, and derives the discount % from these.
+  compareAt: z.coerce.number().min(0).nullable().optional(),
   category: categoryEnum,
   // Craft-supply detail fields.
   packContents: z.array(z.string().trim().max(300)).optional(),

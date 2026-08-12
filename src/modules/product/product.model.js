@@ -23,6 +23,10 @@ const productSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     description: { type: String, default: "", trim: true },
     price: { type: Number, required: true, min: 0 },
+    // Original / MRP price. Rendered with a strikethrough on the storefront
+    // and used to compute the discount %. Optional — a product without
+    // `compareAt` (or with `compareAt <= price`) shows only the sale price.
+    compareAt: { type: Number, default: null, min: 0 },
     category: {
       type: String,
       required: true,
@@ -196,6 +200,7 @@ productSchema.methods.toCard = function () {
     slug: this.slug,
     name: this.name,
     price: this.price,
+    compareAt: this.compareAt || null,
     occasion: this.occasion,
     occasions: this.occasions,
     category: this.category,
