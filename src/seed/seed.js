@@ -17,7 +17,7 @@ const FRESH = process.argv.includes("--fresh");
 
 const descriptions = {
   signature: "A considered, architectural tie — our florists' signature hand.",
-  handmade: "Made to order, one stem at a time, by a single pair of hands.",
+  beautiful: "Made to order, one stem at a time, by a single pair of hands.",
   classic: "An everyday bloom, generous and unfussy.",
   seasonal: "Cut this week, gone the next — whatever the season offers.",
 };

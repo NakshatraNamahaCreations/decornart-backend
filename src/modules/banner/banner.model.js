@@ -13,7 +13,7 @@ const SLOTS = [
   // storefront falls back to a bundled asset when the admin hasn't
   // uploaded one yet, so publishing is optional.
   "about-hero",
-  "handmade-hero",
+  "beautiful-hero",
   "shop-hero",
   "offers-hero",
   "craft-essentials-hero",

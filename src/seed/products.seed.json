@@ -46,7 +46,7 @@
       "wedding",
       "anniversary"
     ],
-    "category": "handmade",
+    "category": "beautiful",
     "isNew": true,
     "isBestseller": false
   },
@@ -85,7 +85,7 @@
       "wedding",
       "anniversary"
     ],
-    "category": "handmade",
+    "category": "beautiful",
     "isNew": true,
     "isBestseller": false
   },
@@ -97,7 +97,7 @@
     "occasions": [
       "anniversary"
     ],
-    "category": "handmade",
+    "category": "beautiful",
     "isNew": false,
     "isBestseller": false
   },
@@ -172,7 +172,7 @@
       "wedding",
       "congratulations"
     ],
-    "category": "handmade",
+    "category": "beautiful",
     "isNew": true,
     "isBestseller": false
   },
