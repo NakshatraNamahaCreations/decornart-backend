@@ -11,6 +11,8 @@ const diyVideoCtrl = require("../diyVideo/diyVideo.controller");
 const diyVideoV = require("../diyVideo/diyVideo.validation");
 const instagramPostCtrl = require("../instagramPost/instagramPost.controller");
 const instagramPostV = require("../instagramPost/instagramPost.validation");
+const contactCtrl = require("../contact/contact.controller");
+const contactV = require("../contact/contact.validation");
 const settingsCtrl = require("../settings/settings.controller");
 const settingsV = require("../settings/settings.validation");
 const shippingCtrl = require("../shipping/shipping.controller");
@@ -200,6 +202,28 @@ router.delete(
   "/instagram-posts/:id",
   validate({ params: instagramPostV.idParam }),
   instagramPostCtrl.deleteOne
+);
+
+// ── Enquiries (contact + wholesale form submissions) ──────────────────
+router.get(
+  "/enquiries",
+  validate({ query: contactV.listQuery }),
+  contactCtrl.listAdmin
+);
+router.get(
+  "/enquiries/:id",
+  validate({ params: contactV.idParam }),
+  contactCtrl.getAdmin
+);
+router.patch(
+  "/enquiries/:id/status",
+  validate({ params: contactV.idParam, body: contactV.statusUpdate }),
+  contactCtrl.updateStatus
+);
+router.delete(
+  "/enquiries/:id",
+  validate({ params: contactV.idParam }),
+  contactCtrl.remove
 );
 
 module.exports = router;
