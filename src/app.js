@@ -79,6 +79,7 @@ const modules = [
   ["/diy-videos", "./modules/diyVideo/diyVideo.routes"],
   ["/instagram-posts", "./modules/instagramPost/instagramPost.routes"],
   ["/admin", "./modules/admin/admin.routes"],
+  ["/uploads", "./modules/uploads/uploads.routes"],
 ];
 
 const logger = require("./utils/logger");
